@@ -20,10 +20,10 @@ Use the relay script at `scripts/relay` (inside this skill directory) to generat
 
 ## One-Shot Call
 
+Run as a single chained command so shell variables persist:
+
 ```bash
-RELAY=~/.claude/skills/relay/scripts/relay
-REQ=$($RELAY req --from claude --to codex --name auth-review "Review src/auth.py for security issues. Run pytest to verify.")
-codex exec --full-auto "Read and execute $REQ"
+REQ=$(~/.claude/skills/relay/scripts/relay req --from claude --to codex --name auth-review "Review src/auth.py for security issues. Run pytest to verify.") && codex exec --full-auto "Read and execute $REQ"
 ```
 
 Read the response:
@@ -37,9 +37,7 @@ RES="${REQ%.req.md}.res.md"
 Sessions keep turn history so the receiver sees full context from both agents.
 
 ```bash
-RELAY=~/.claude/skills/relay/scripts/relay
-REQ=$($RELAY req --from claude --to codex --session auth-refactor "Fix the issues from my review. Run pytest to verify.")
-codex exec --full-auto "Read and execute $REQ"
+REQ=$(~/.claude/skills/relay/scripts/relay req --from claude --to codex --session auth-refactor "Fix the issues from my review. Run pytest to verify.") && codex exec --full-auto "Read and execute $REQ"
 ```
 
 Read the response:

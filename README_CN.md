@@ -58,20 +58,20 @@ Relay 刻意保持简洁：没有锁死的 schema，只有一个 agent 与人类
 
 ## 工作流程
 
-```text
-Initiator                              Receiver
-   │                                      │
-   │  1. $RELAY req --name ... "task"     │
-   │     → .relay/{timestamp}-{name}.req  │
-   │  2. 调用对端 ──────────────────────>  │
-   │     "读取并执行该文件"                 │
-   │                                      │  3. 读取请求
-   │                                      │  4. 执行任务
-   │                                      │  5. 运行验证（如果有）
-   │  6. 读取 .relay/{id}.res.md  <─────  │  6. 写入响应
-   │  7. 检查 status + verify             │
-   │  8. 汇总给用户                        │
-   │                                      │
+```mermaid
+sequenceDiagram
+    participant I as 发起方
+    participant R as 接收方
+
+    I->>I: 1. $RELAY req --name ... "task"
+    Note left of I: → .relay/{timestamp}-{name}.req.md
+    I->>R: 2. "读取并执行该文件"
+    R->>R: 3. 读取请求
+    R->>R: 4. 执行任务
+    R->>R: 5. 运行验证（如果有）
+    R->>I: 6. 写入 .relay/{id}.res.md
+    I->>I: 7. 检查 status + verify
+    I->>I: 8. 汇总给用户
 ```
 
 ---
@@ -125,17 +125,13 @@ curl -sL https://raw.githubusercontent.com/chrisliu298/relay/main/codex/skills/r
 **Claude Code → Codex：**
 
 ```bash
-RELAY=~/.claude/skills/relay/scripts/relay
-REQ=$($RELAY req --from claude --to codex --name auth-review "检查 src/auth.py 的安全问题。运行 pytest 验证。")
-codex exec --full-auto "Read and execute $REQ"
+REQ=$(~/.claude/skills/relay/scripts/relay req --from claude --to codex --name auth-review "检查 src/auth.py 的安全问题。运行 pytest 验证。") && codex exec --full-auto "Read and execute $REQ"
 ```
 
 **Codex → Claude Code：**
 
 ```bash
-RELAY=~/.codex/skills/relay/scripts/relay
-REQ=$($RELAY req --from codex --to claude --name auth-review "检查 src/auth.py 的安全问题。运行 pytest 验证。")
-env -u CLAUDECODE claude -p --dangerously-skip-permissions "Read and execute $REQ"
+REQ=$(~/.codex/skills/relay/scripts/relay req --from codex --to claude --name auth-review "检查 src/auth.py 的安全问题。运行 pytest 验证。") && env -u CLAUDECODE claude -p --dangerously-skip-permissions "Read and execute $REQ"
 ```
 
 - `env -u CLAUDECODE` 防止嵌套会话错误
@@ -183,17 +179,13 @@ Format:
 **Claude Code → Codex：**
 
 ```bash
-RELAY=~/.claude/skills/relay/scripts/relay
-REQ=$($RELAY req --from claude --to codex --session auth-refactor "修复问题并添加测试。运行 pytest 验证。")
-codex exec --full-auto "Read and execute $REQ"
+REQ=$(~/.claude/skills/relay/scripts/relay req --from claude --to codex --session auth-refactor "修复问题并添加测试。运行 pytest 验证。") && codex exec --full-auto "Read and execute $REQ"
 ```
 
 **Codex → Claude Code：**
 
 ```bash
-RELAY=~/.codex/skills/relay/scripts/relay
-REQ=$($RELAY req --from codex --to claude --session auth-refactor "修复问题并添加测试。运行 pytest 验证。")
-env -u CLAUDECODE claude -p --dangerously-skip-permissions "Read and execute $REQ"
+REQ=$(~/.codex/skills/relay/scripts/relay req --from codex --to claude --session auth-refactor "修复问题并添加测试。运行 pytest 验证。") && env -u CLAUDECODE claude -p --dangerously-skip-permissions "Read and execute $REQ"
 ```
 
 会话名必须是 slug（`[a-z0-9-]+`）。会话按顺序执行 — 同一时间只有一个写入者。

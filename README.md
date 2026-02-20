@@ -58,20 +58,20 @@ Relay stays intentionally small: no locked schema, just a readable protocol that
 
 ## How It Works
 
-```text
-Initiator                              Receiver
-   │                                      │
-   │  1. $RELAY req --name ... "task"     │
-   │     → .relay/{timestamp}-{name}.req  │
-   │  2. Invoke peer ──────────────────>  │
-   │     "Read and execute the file"      │
-   │                                      │  3. Read request
-   │                                      │  4. Execute task
-   │                                      │  5. Run verification (if given)
-   │  6. Read .relay/{id}.res.md  <─────  │  6. Write response
-   │  7. Check status + verify            │
-   │  8. Report to user                   │
-   │                                      │
+```mermaid
+sequenceDiagram
+    participant I as Initiator
+    participant R as Receiver
+
+    I->>I: 1. $RELAY req --name ... "task"
+    Note left of I: → .relay/{timestamp}-{name}.req.md
+    I->>R: 2. "Read and execute the file"
+    R->>R: 3. Read request
+    R->>R: 4. Execute task
+    R->>R: 5. Run verification (if given)
+    R->>I: 6. Write .relay/{id}.res.md
+    I->>I: 7. Check status + verify
+    I->>I: 8. Report to user
 ```
 
 ---
@@ -125,17 +125,13 @@ The `scripts/relay` script generates a self-contained request with frontmatter, 
 **Claude Code → Codex:**
 
 ```bash
-RELAY=~/.claude/skills/relay/scripts/relay
-REQ=$($RELAY req --from claude --to codex --name auth-review "Review src/auth.py for security issues. Run pytest to verify.")
-codex exec --full-auto "Read and execute $REQ"
+REQ=$(~/.claude/skills/relay/scripts/relay req --from claude --to codex --name auth-review "Review src/auth.py for security issues. Run pytest to verify.") && codex exec --full-auto "Read and execute $REQ"
 ```
 
 **Codex → Claude Code:**
 
 ```bash
-RELAY=~/.codex/skills/relay/scripts/relay
-REQ=$($RELAY req --from codex --to claude --name auth-review "Review src/auth.py for security issues. Run pytest to verify.")
-env -u CLAUDECODE claude -p --dangerously-skip-permissions "Read and execute $REQ"
+REQ=$(~/.codex/skills/relay/scripts/relay req --from codex --to claude --name auth-review "Review src/auth.py for security issues. Run pytest to verify.") && env -u CLAUDECODE claude -p --dangerously-skip-permissions "Read and execute $REQ"
 ```
 
 - `env -u CLAUDECODE` prevents nested-session errors
@@ -183,17 +179,13 @@ Sessions keep full turn history so the receiver reads all prior exchanges for co
 **Claude Code → Codex:**
 
 ```bash
-RELAY=~/.claude/skills/relay/scripts/relay
-REQ=$($RELAY req --from claude --to codex --session auth-refactor "Fix the issues and add tests. Run pytest to verify.")
-codex exec --full-auto "Read and execute $REQ"
+REQ=$(~/.claude/skills/relay/scripts/relay req --from claude --to codex --session auth-refactor "Fix the issues and add tests. Run pytest to verify.") && codex exec --full-auto "Read and execute $REQ"
 ```
 
 **Codex → Claude Code:**
 
 ```bash
-RELAY=~/.codex/skills/relay/scripts/relay
-REQ=$($RELAY req --from codex --to claude --session auth-refactor "Fix the issues and add tests. Run pytest to verify.")
-env -u CLAUDECODE claude -p --dangerously-skip-permissions "Read and execute $REQ"
+REQ=$(~/.codex/skills/relay/scripts/relay req --from codex --to claude --session auth-refactor "Fix the issues and add tests. Run pytest to verify.") && env -u CLAUDECODE claude -p --dangerously-skip-permissions "Read and execute $REQ"
 ```
 
 Session names must be slugs (`[a-z0-9-]+`). Sessions are sequential — one writer at a time.
