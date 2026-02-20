@@ -32,10 +32,10 @@ Subagents spawn copies of the same model. Relay calls a different model — diff
 
 Relay combines practical agent design lessons from Anthropic and OpenAI into a minimal protocol.
 
-- **Protocol fades, task shines.** Frontmatter routes messages; the task stays in natural language.
-- **Self-contained, reference-first.** A request includes the task and response template, while context stays as file references instead of pasted blobs.
-- **Verification is first-class.** Responses carry `verify: pass | fail | skip` in frontmatter. Commands and evidence stay in the body.
-- **Guided, not enforced.** Relay recommends a body pattern but avoids rigid schema.
+- **Protocol fades, task shines.** Frontmatter routes messages; the task stays in natural language. [^1]
+- **Self-contained, reference-first.** A request includes the task and response template, while context stays as file references instead of pasted blobs. [^2]
+- **Verification is first-class.** Responses carry `verify: pass | fail | skip` in frontmatter. Commands and evidence stay in the body. [^3]
+- **Guided, not enforced.** Relay recommends a body pattern but avoids rigid schema. [^4]
 
 These choices reduce formatting failures, keep protocol rules in one place (the request file), and let callers branch on verification without parsing prose.
 
@@ -247,3 +247,8 @@ relay/
 - [@chrisliu298](https://github.com/chrisliu298)
 - **Claude Code** — protocol design
 - **Codex** — execution contract and CLI integration
+
+[^1]: Anthropic — [Building effective agents](https://www.anthropic.com/research/building-effective-agents), [Writing tools for agents](https://www.anthropic.com/engineering/writing-tools-for-agents); OpenAI — [A practical guide to building agents](https://openai.com/business/guides-and-resources/a-practical-guide-to-building-ai-agents/), [Unrolling the Codex agent loop](https://openai.com/index/unrolling-the-codex-agent-loop/)
+[^2]: Anthropic — [Effective context engineering](https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents); OpenAI — [Conversation state](https://developers.openai.com/api/docs/guides/conversation-state), [Compaction](https://developers.openai.com/api/docs/guides/compaction)
+[^3]: Anthropic — [Demystifying evals for AI agents](https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents); OpenAI — [Agent evals](https://developers.openai.com/api/docs/guides/agent-evals)
+[^4]: Anthropic — [Building effective agents](https://www.anthropic.com/research/building-effective-agents), [Writing tools for agents](https://www.anthropic.com/engineering/writing-tools-for-agents); OpenAI — [Function calling](https://developers.openai.com/api/docs/guides/function-calling)

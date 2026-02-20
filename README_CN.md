@@ -32,10 +32,10 @@ Subagent 生成的是同一模型的副本。Relay 调用不同模型 — 不同
 
 Relay 融合了 Anthropic 与 OpenAI 在 agent 设计上的实践经验，并将其压缩为一个极简协议。
 
-- **协议淡出，任务凸显。** Frontmatter 负责路由；任务正文保持自然语言。
-- **请求自包含，上下文引用优先。** 请求包含任务与响应模板；上下文以文件引用为主，不粘贴大段内容。
-- **验证是一等信号。** 响应在 frontmatter 中携带 `verify: pass | fail | skip`；验证命令和证据放在正文。
-- **引导而非强制。** Relay 推荐正文结构，但不施加僵硬 schema。
+- **协议淡出，任务凸显。** Frontmatter 负责路由；任务正文保持自然语言。[^1]
+- **请求自包含，上下文引用优先。** 请求包含任务与响应模板；上下文以文件引用为主，不粘贴大段内容。[^2]
+- **验证是一等信号。** 响应在 frontmatter 中携带 `verify: pass | fail | skip`；验证命令和证据放在正文。[^3]
+- **引导而非强制。** Relay 推荐正文结构，但不施加僵硬 schema。[^4]
 
 这些选择减少格式错误，把协议规则集中在请求文件中，并让调用方无需解析正文即可按验证结果分支。
 
@@ -247,3 +247,8 @@ relay/
 - [@chrisliu298](https://github.com/chrisliu298)
 - **Claude Code** — 协议设计
 - **Codex** — 执行契约与 CLI 集成
+
+[^1]: Anthropic — [Building effective agents](https://www.anthropic.com/research/building-effective-agents)、[Writing tools for agents](https://www.anthropic.com/engineering/writing-tools-for-agents)；OpenAI — [A practical guide to building agents](https://openai.com/business/guides-and-resources/a-practical-guide-to-building-ai-agents/)、[Unrolling the Codex agent loop](https://openai.com/index/unrolling-the-codex-agent-loop/)
+[^2]: Anthropic — [Effective context engineering](https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents)；OpenAI — [Conversation state](https://developers.openai.com/api/docs/guides/conversation-state)、[Compaction](https://developers.openai.com/api/docs/guides/compaction)
+[^3]: Anthropic — [Demystifying evals for AI agents](https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents)；OpenAI — [Agent evals](https://developers.openai.com/api/docs/guides/agent-evals)
+[^4]: Anthropic — [Building effective agents](https://www.anthropic.com/research/building-effective-agents)、[Writing tools for agents](https://www.anthropic.com/engineering/writing-tools-for-agents)；OpenAI — [Function calling](https://developers.openai.com/api/docs/guides/function-calling)
