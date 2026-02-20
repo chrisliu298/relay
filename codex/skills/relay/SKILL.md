@@ -22,7 +22,7 @@ Use the relay script at `scripts/relay` (inside this skill directory) to generat
 Run as a single chained command so shell variables persist:
 
 ```bash
-REQ=$(~/.codex/skills/relay/scripts/relay req --from codex --to claude --name auth-review "Review src/auth.py for security issues. Run pytest to verify.") && env -u CLAUDECODE claude -p --dangerously-skip-permissions "Read and execute $REQ"
+REQ=$(~/.codex/skills/relay/scripts/relay req --from codex --to claude --name auth-review "Review src/auth.py for security issues. Run pytest to verify.") && env -u CLAUDECODE claude --model claude-opus-4-6 -p --dangerously-skip-permissions "Read and execute $REQ"
 ```
 
 Read the response:
@@ -36,7 +36,7 @@ RES="${REQ%.req.md}.res.md"
 Sessions keep turn history so the receiver sees full context from both agents.
 
 ```bash
-REQ=$(~/.codex/skills/relay/scripts/relay req --from codex --to claude --session auth-refactor "Fix the issues from my review. Run pytest to verify.") && env -u CLAUDECODE claude -p --dangerously-skip-permissions "Read and execute $REQ"
+REQ=$(~/.codex/skills/relay/scripts/relay req --from codex --to claude --session auth-refactor "Fix the issues from my review. Run pytest to verify.") && env -u CLAUDECODE claude --model claude-opus-4-6 -p --dangerously-skip-permissions "Read and execute $REQ"
 ```
 
 Read the response:

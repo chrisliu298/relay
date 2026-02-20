@@ -23,7 +23,7 @@ Use the relay script at `scripts/relay` (inside this skill directory) to generat
 Run as a single chained command so shell variables persist:
 
 ```bash
-REQ=$(~/.claude/skills/relay/scripts/relay req --from claude --to codex --name auth-review "Review src/auth.py for security issues. Run pytest to verify.") && codex exec --full-auto "Read and execute $REQ"
+REQ=$(~/.claude/skills/relay/scripts/relay req --from claude --to codex --name auth-review "Review src/auth.py for security issues. Run pytest to verify.") && codex exec --model gpt-5.3-codex -c 'model_reasoning_effort="xhigh"' --full-auto "Read and execute $REQ"
 ```
 
 Read the response:
@@ -37,7 +37,7 @@ RES="${REQ%.req.md}.res.md"
 Sessions keep turn history so the receiver sees full context from both agents.
 
 ```bash
-REQ=$(~/.claude/skills/relay/scripts/relay req --from claude --to codex --session auth-refactor "Fix the issues from my review. Run pytest to verify.") && codex exec --full-auto "Read and execute $REQ"
+REQ=$(~/.claude/skills/relay/scripts/relay req --from claude --to codex --session auth-refactor "Fix the issues from my review. Run pytest to verify.") && codex exec --model gpt-5.3-codex -c 'model_reasoning_effort="xhigh"' --full-auto "Read and execute $REQ"
 ```
 
 Read the response:

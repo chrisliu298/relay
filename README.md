@@ -138,13 +138,13 @@ The `scripts/relay` script generates a self-contained request with frontmatter, 
 **Claude Code → Codex:**
 
 ```bash
-REQ=$(~/.claude/skills/relay/scripts/relay req --from claude --to codex --name auth-review "Review src/auth.py for security issues. Run pytest to verify.") && codex exec --full-auto "Read and execute $REQ"
+REQ=$(~/.claude/skills/relay/scripts/relay req --from claude --to codex --name auth-review "Review src/auth.py for security issues. Run pytest to verify.") && codex exec --model gpt-5.3-codex -c 'model_reasoning_effort="xhigh"' --full-auto "Read and execute $REQ"
 ```
 
 **Codex → Claude Code:**
 
 ```bash
-REQ=$(~/.codex/skills/relay/scripts/relay req --from codex --to claude --name auth-review "Review src/auth.py for security issues. Run pytest to verify.") && env -u CLAUDECODE claude -p --dangerously-skip-permissions "Read and execute $REQ"
+REQ=$(~/.codex/skills/relay/scripts/relay req --from codex --to claude --name auth-review "Review src/auth.py for security issues. Run pytest to verify.") && env -u CLAUDECODE claude --model claude-opus-4-6 -p --dangerously-skip-permissions "Read and execute $REQ"
 ```
 
 - `env -u CLAUDECODE` prevents nested-session errors
@@ -192,13 +192,13 @@ Sessions keep full turn history so the receiver reads all prior exchanges for co
 **Claude Code → Codex:**
 
 ```bash
-REQ=$(~/.claude/skills/relay/scripts/relay req --from claude --to codex --session auth-refactor "Fix the issues and add tests. Run pytest to verify.") && codex exec --full-auto "Read and execute $REQ"
+REQ=$(~/.claude/skills/relay/scripts/relay req --from claude --to codex --session auth-refactor "Fix the issues and add tests. Run pytest to verify.") && codex exec --model gpt-5.3-codex -c 'model_reasoning_effort="xhigh"' --full-auto "Read and execute $REQ"
 ```
 
 **Codex → Claude Code:**
 
 ```bash
-REQ=$(~/.codex/skills/relay/scripts/relay req --from codex --to claude --session auth-refactor "Fix the issues and add tests. Run pytest to verify.") && env -u CLAUDECODE claude -p --dangerously-skip-permissions "Read and execute $REQ"
+REQ=$(~/.codex/skills/relay/scripts/relay req --from codex --to claude --session auth-refactor "Fix the issues and add tests. Run pytest to verify.") && env -u CLAUDECODE claude --model claude-opus-4-6 -p --dangerously-skip-permissions "Read and execute $REQ"
 ```
 
 Session names must be slugs (`[a-z0-9-]+`). Sessions are sequential — one writer at a time.

@@ -138,13 +138,13 @@ curl -sL https://raw.githubusercontent.com/chrisliu298/relay/main/codex/skills/r
 **Claude Code → Codex：**
 
 ```bash
-REQ=$(~/.claude/skills/relay/scripts/relay req --from claude --to codex --name auth-review "检查 src/auth.py 的安全问题。运行 pytest 验证。") && codex exec --full-auto "Read and execute $REQ"
+REQ=$(~/.claude/skills/relay/scripts/relay req --from claude --to codex --name auth-review "检查 src/auth.py 的安全问题。运行 pytest 验证。") && codex exec --model gpt-5.3-codex -c 'model_reasoning_effort="xhigh"' --full-auto "Read and execute $REQ"
 ```
 
 **Codex → Claude Code：**
 
 ```bash
-REQ=$(~/.codex/skills/relay/scripts/relay req --from codex --to claude --name auth-review "检查 src/auth.py 的安全问题。运行 pytest 验证。") && env -u CLAUDECODE claude -p --dangerously-skip-permissions "Read and execute $REQ"
+REQ=$(~/.codex/skills/relay/scripts/relay req --from codex --to claude --name auth-review "检查 src/auth.py 的安全问题。运行 pytest 验证。") && env -u CLAUDECODE claude --model claude-opus-4-6 -p --dangerously-skip-permissions "Read and execute $REQ"
 ```
 
 - `env -u CLAUDECODE` 防止嵌套会话错误
@@ -192,13 +192,13 @@ Format:
 **Claude Code → Codex：**
 
 ```bash
-REQ=$(~/.claude/skills/relay/scripts/relay req --from claude --to codex --session auth-refactor "修复问题并添加测试。运行 pytest 验证。") && codex exec --full-auto "Read and execute $REQ"
+REQ=$(~/.claude/skills/relay/scripts/relay req --from claude --to codex --session auth-refactor "修复问题并添加测试。运行 pytest 验证。") && codex exec --model gpt-5.3-codex -c 'model_reasoning_effort="xhigh"' --full-auto "Read and execute $REQ"
 ```
 
 **Codex → Claude Code：**
 
 ```bash
-REQ=$(~/.codex/skills/relay/scripts/relay req --from codex --to claude --session auth-refactor "修复问题并添加测试。运行 pytest 验证。") && env -u CLAUDECODE claude -p --dangerously-skip-permissions "Read and execute $REQ"
+REQ=$(~/.codex/skills/relay/scripts/relay req --from codex --to claude --session auth-refactor "修复问题并添加测试。运行 pytest 验证。") && env -u CLAUDECODE claude --model claude-opus-4-6 -p --dangerously-skip-permissions "Read and execute $REQ"
 ```
 
 会话名必须是 slug（`[a-z0-9-]+`）。会话按顺序执行 — 同一时间只有一个写入者。
