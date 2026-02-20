@@ -1,0 +1,199 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# relay — generate relay protocol v4 request/response files
+#
+# Usage:
+#   relay req --from <peer> --to <peer> --name <slug> [--session <slug>] [--] "<body>"
+#   relay res --re <id> --from <peer> --to <peer> --status <done|error> --verify <pass|fail|skip> [--session <slug>] [--] "<body>"
+#
+# One-shot IDs: YYYYMMDD-HHMM-{name}. Session turns: auto-numbered 01, 02, ...
+# Prints the created file path to stdout. Errors go to stderr.
+
+VERSION=4
+RELAY_DIR=".relay"
+
+die() { echo "relay: $*" >&2; exit 1; }
+
+check_slug() {
+  case "$2" in
+    *[!a-z0-9-]*) die "$1 must be a slug [a-z0-9-]+" ;;
+  esac
+}
+
+ensure_relay_dir() {
+  mkdir -p "$RELAY_DIR"
+  grep -qxF '.relay/' .gitignore 2>/dev/null || echo '.relay/' >> .gitignore
+}
+
+next_turn() {
+  local session_dir="$RELAY_DIR/$1"
+  mkdir -p "$session_dir"
+  local count
+  count=$(find "$session_dir" -maxdepth 1 -name '*.req.md' 2>/dev/null | wc -l | tr -d ' ')
+  printf "%02d" "$(( count + 1 ))"
+}
+
+cmd_req() {
+  local from="" to="" session="" name="" body=""
+
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --from)    from="$2"; shift 2 ;;
+      --to)      to="$2"; shift 2 ;;
+      --session) session="$2"; shift 2 ;;
+      --name)    name="$2"; shift 2 ;;
+      --)        shift; body="$*"; break ;;
+      -*)        die "unknown flag: $1" ;;
+      *)         body="$*"; break ;;
+    esac
+  done
+
+  [ -n "$from" ] || die "req: --from required"
+  [ -n "$to" ]   || die "req: --to required"
+  [ -n "$body" ] || die "req: body required (final argument)"
+
+  if [ -n "$session" ]; then
+    check_slug "req: --session" "$session"
+  fi
+
+  ensure_relay_dir
+
+  local filepath id
+  if [ -n "$session" ]; then
+    local turn
+    turn=$(next_turn "$session")
+    id="$turn"
+    filepath="$RELAY_DIR/$session/$turn.req.md"
+
+    cat > "$filepath" <<EOF
+---
+relay: $VERSION
+id: $id
+from: $from
+to: $to
+---
+
+$body
+
+---
+Reply: $RELAY_DIR/$session/$turn.res.md
+Context: read all .md files in $RELAY_DIR/$session/ in order first
+Format:
+  ---
+  relay: $VERSION
+  re: $id
+  from: $to
+  to: $from
+  status: done | error
+  verify: pass | fail | skip
+  ---
+  {your response}
+EOF
+  else
+    [ -n "$name" ] || die "req: --name required for one-shot calls"
+    check_slug "req: --name" "$name"
+    id="$(date +%Y%m%d-%H%M)-$name"
+    filepath="$RELAY_DIR/$id.req.md"
+
+    cat > "$filepath" <<EOF
+---
+relay: $VERSION
+id: $id
+from: $from
+to: $to
+---
+
+$body
+
+---
+Reply: $RELAY_DIR/$id.res.md
+Format:
+  ---
+  relay: $VERSION
+  re: $id
+  from: $to
+  to: $from
+  status: done | error
+  verify: pass | fail | skip
+  ---
+  {your response}
+EOF
+  fi
+
+  echo "$filepath"
+}
+
+cmd_res() {
+  local re="" from="" to="" status="" verify="" session="" body=""
+
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --re)      re="$2"; shift 2 ;;
+      --from)    from="$2"; shift 2 ;;
+      --to)      to="$2"; shift 2 ;;
+      --status)  status="$2"; shift 2 ;;
+      --verify)  verify="$2"; shift 2 ;;
+      --session) session="$2"; shift 2 ;;
+      --)        shift; body="$*"; break ;;
+      -*)        die "unknown flag: $1" ;;
+      *)         body="$*"; break ;;
+    esac
+  done
+
+  [ -n "$re" ]     || die "res: --re required"
+  [ -n "$from" ]   || die "res: --from required"
+  [ -n "$to" ]     || die "res: --to required"
+  [ -n "$status" ] || die "res: --status required"
+  [ -n "$verify" ] || die "res: --verify required"
+  [ -n "$body" ]   || die "res: body required (final argument)"
+
+  if [ -n "$session" ]; then
+    check_slug "res: --session" "$session"
+  fi
+
+  case "$status" in
+    done|error) ;;
+    *) die "res: --status must be 'done' or 'error'" ;;
+  esac
+
+  case "$verify" in
+    pass|fail|skip) ;;
+    *) die "res: --verify must be 'pass', 'fail', or 'skip'" ;;
+  esac
+
+  ensure_relay_dir
+
+  local filepath
+  if [ -n "$session" ]; then
+    mkdir -p "$RELAY_DIR/$session"
+    filepath="$RELAY_DIR/$session/$re.res.md"
+  else
+    filepath="$RELAY_DIR/$re.res.md"
+  fi
+
+  cat > "$filepath" <<EOF
+---
+relay: $VERSION
+re: $re
+from: $from
+to: $to
+status: $status
+verify: $verify
+---
+
+$body
+EOF
+
+  echo "$filepath"
+}
+
+# Main
+[ $# -ge 1 ] || die "usage: relay <req|res> [options] <body>"
+subcmd="$1"; shift
+
+case "$subcmd" in
+  req) cmd_req "$@" ;;
+  res) cmd_res "$@" ;;
+  *)   die "unknown subcommand: $subcmd (use 'req' or 'res')" ;;
+esac
