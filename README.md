@@ -12,6 +12,19 @@ relay(task, session?) → {status, verify, body}
 
 Co-authored by Claude Code and Codex.
 
+## Table of Contents
+
+- [Why](#why)
+- [Philosophy](#philosophy)
+- [Made by Agents, for Agents](#made-by-agents-for-agents)
+- [How It Works](#how-it-works)
+- [Installation](#installation)
+- [Usage](#usage)
+- [The Interface](#the-interface)
+- [Safety](#safety)
+- [Repo Structure](#repo-structure)
+- [Contributors](#contributors)
+
 ---
 
 ## Why
