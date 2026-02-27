@@ -91,6 +91,16 @@ sequenceDiagram
 
 ## Installation
 
+### Quick install (npx)
+
+```bash
+npx skills add chrisliu298/relay
+```
+
+This installs the skill for all supported agents (Claude Code, Codex) using the [skills CLI](https://github.com/vercel-labs/skills).
+
+### Manual install (curl)
+
 Each skill bundles its own `scripts/relay` generator — no shared binary needed.
 
 **Claude Code skill:**
