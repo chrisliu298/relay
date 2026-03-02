@@ -147,7 +147,7 @@ Each direction pins a specific model. Do **not** substitute other models — the
 
 | Direction | Model flag | Notes |
 |---|---|---|
-| Claude Code → Codex | `--model gpt-5.3-codex -c 'model_reasoning_effort="xhigh"'` | Optimal model for this skill. Do not substitute `o4-mini`, `gpt-4o`, etc. |
+| Claude Code → Codex | `--model gpt-5.3-codex -c 'model_reasoning_effort="xhigh"'` | Optimal model for this skill. Do not substitute other models. |
 | Codex → Claude Code | `--model claude-opus-4-6` | Optimal model for this skill. |
 
 ### One-Shot Call

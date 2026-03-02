@@ -147,7 +147,7 @@ curl -sL https://raw.githubusercontent.com/chrisliu298/relay/main/codex/skills/r
 
 | 方向 | 模型参数 | 说明 |
 |---|---|---|
-| Claude Code → Codex | `--model gpt-5.3-codex -c 'model_reasoning_effort="xhigh"'` | 本 skill 的最优模型，请勿替换为 `o4-mini`、`gpt-4o` 等。 |
+| Claude Code → Codex | `--model gpt-5.3-codex -c 'model_reasoning_effort="xhigh"'` | 本 skill 的最优模型，请勿替换。 |
 | Codex → Claude Code | `--model claude-opus-4-6` | 本 skill 的最优模型。 |
 
 ### 单次调用
