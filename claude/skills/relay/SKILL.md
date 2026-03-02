@@ -18,9 +18,9 @@ relay(task, session?) → {status, verify, body}
 
 Use the relay script at `scripts/relay` (inside this skill directory) to generate request/response files. Do not manually construct frontmatter.
 
-## Model
+## Model (REQUIRED — do not change)
 
-Always use `--model gpt-5.3-codex -c 'model_reasoning_effort="xhigh"'` when calling `codex exec`. This is the optimal model for this skill. Do **not** substitute other models.
+You MUST use exactly `--model gpt-5.3-codex -c 'model_reasoning_effort="xhigh"'` when calling `codex exec`. No other model is allowed. Do **not** substitute, omit, or override the model or reasoning effort flags under any circumstances. If you use a different model, the relay will produce incorrect results.
 
 ## One-Shot Call
 

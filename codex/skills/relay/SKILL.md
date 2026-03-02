@@ -17,16 +17,16 @@ relay(task, session?) → {status, verify, body}
 
 Use the relay script at `scripts/relay` (inside this skill directory) to generate request/response files. Do not manually construct frontmatter.
 
-## Model
+## Model (REQUIRED — do not change)
 
-Always use `--model claude-opus-4-6` when calling `claude`. This is the optimal model for this skill. Do **not** substitute other models — use exactly `claude-opus-4-6`.
+You MUST use exactly `--model opus` when calling `claude`. No other model is allowed. Do **not** substitute, omit, or override the model flag under any circumstances. The only permitted model is `opus`. If you use a different model, the relay will produce incorrect results.
 
 ## One-Shot Call
 
 Run as a single chained command so shell variables persist:
 
 ```bash
-REQ=$(~/.codex/skills/relay/scripts/relay req --from codex --to claude --name auth-review "Review src/auth.py for security issues. Run pytest to verify.") && env -u CLAUDECODE claude --model claude-opus-4-6 -p --dangerously-skip-permissions "Read and execute $REQ"
+REQ=$(~/.codex/skills/relay/scripts/relay req --from codex --to claude --name auth-review "Review src/auth.py for security issues. Run pytest to verify.") && env -u CLAUDECODE claude --model opus -p --dangerously-skip-permissions "Read and execute $REQ"
 ```
 
 Read the response:
@@ -40,7 +40,7 @@ RES="${REQ%.req.md}.res.md"
 Sessions keep turn history so the receiver sees full context from both agents.
 
 ```bash
-REQ=$(~/.codex/skills/relay/scripts/relay req --from codex --to claude --session auth-refactor "Fix the issues from my review. Run pytest to verify.") && env -u CLAUDECODE claude --model claude-opus-4-6 -p --dangerously-skip-permissions "Read and execute $REQ"
+REQ=$(~/.codex/skills/relay/scripts/relay req --from codex --to claude --session auth-refactor "Fix the issues from my review. Run pytest to verify.") && env -u CLAUDECODE claude --model opus -p --dangerously-skip-permissions "Read and execute $REQ"
 ```
 
 Read the response:
