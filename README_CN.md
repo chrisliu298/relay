@@ -141,6 +141,15 @@ curl -sL https://raw.githubusercontent.com/chrisliu298/relay/main/codex/skills/r
 
 ## 接口
 
+### 模型
+
+每个方向指定了最优模型，**请勿**自行替换，否则可能导致调用失败。
+
+| 方向 | 模型参数 | 说明 |
+|---|---|---|
+| Claude Code → Codex | `--model gpt-5.3-codex -c 'model_reasoning_effort="xhigh"'` | 本 skill 的最优模型，请勿替换为 `o4-mini`、`gpt-4o` 等。 |
+| Codex → Claude Code | `--model claude-opus-4-6` | 本 skill 的最优模型。 |
+
 ### 单次调用
 
 `scripts/relay` 脚本生成一个自包含请求，包含 frontmatter、正文和响应模板。`--name` 提供可读的短名称；脚本自动添加时间戳前缀。

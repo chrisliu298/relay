@@ -141,6 +141,15 @@ Or invoke directly with `/relay`.
 
 ## The Interface
 
+### Models
+
+Each direction pins a specific model. Do **not** substitute other models — they may not be available and the call will fail.
+
+| Direction | Model flag | Notes |
+|---|---|---|
+| Claude Code → Codex | `--model gpt-5.3-codex -c 'model_reasoning_effort="xhigh"'` | Optimal model for this skill. Do not substitute `o4-mini`, `gpt-4o`, etc. |
+| Codex → Claude Code | `--model claude-opus-4-6` | Optimal model for this skill. |
+
 ### One-Shot Call
 
 The `scripts/relay` script generates a self-contained request with frontmatter, body, and response template. The `--name` flag provides a human-readable slug; the script prepends a timestamp automatically.

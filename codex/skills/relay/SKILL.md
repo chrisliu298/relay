@@ -17,6 +17,10 @@ relay(task, session?) → {status, verify, body}
 
 Use the relay script at `scripts/relay` (inside this skill directory) to generate request/response files. Do not manually construct frontmatter.
 
+## Model
+
+Always use `--model claude-opus-4-6` when calling `claude`. This is the optimal model for this skill. Do **not** substitute other models — use exactly `claude-opus-4-6`.
+
 ## One-Shot Call
 
 Run as a single chained command so shell variables persist:

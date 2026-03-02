@@ -18,6 +18,10 @@ relay(task, session?) → {status, verify, body}
 
 Use the relay script at `scripts/relay` (inside this skill directory) to generate request/response files. Do not manually construct frontmatter.
 
+## Model
+
+Always use `--model gpt-5.3-codex -c 'model_reasoning_effort="xhigh"'` when calling `codex exec`. This is the optimal model for this skill. Do **not** substitute other models (e.g. `o4-mini`, `gpt-4o`) — they may not be available and the call will fail.
+
 ## One-Shot Call
 
 Run as a single chained command so shell variables persist:
