@@ -20,14 +20,14 @@ Use the relay script at `scripts/relay` (inside this skill directory) to generat
 
 ## Model (REQUIRED — do not change)
 
-You MUST use exactly `--model gpt-5.3-codex -c 'model_reasoning_effort="xhigh"'` when calling `codex exec`. No other model is allowed. Do **not** substitute, omit, or override the model or reasoning effort flags under any circumstances. If you use a different model, the relay will produce incorrect results.
+You MUST use exactly `--model gpt-5.4 -c 'model_reasoning_effort="xhigh"'` when calling `codex exec`. No other model is allowed. Do **not** substitute, omit, or override the model or reasoning effort flags under any circumstances. If you use a different model, the relay will produce incorrect results.
 
 ## One-Shot Call
 
 Run as a single chained command so shell variables persist:
 
 ```bash
-REQ=$(~/.claude/skills/relay/scripts/relay req --from claude --to codex --name auth-review "Review src/auth.py for security issues. Run pytest to verify.") && codex exec --model gpt-5.3-codex -c 'model_reasoning_effort="xhigh"' --full-auto "Read and execute $REQ"
+REQ=$(~/.claude/skills/relay/scripts/relay req --from claude --to codex --name auth-review "Review src/auth.py for security issues. Run pytest to verify.") && codex exec --model gpt-5.4 -c 'model_reasoning_effort="xhigh"' --full-auto "Read and execute $REQ"
 ```
 
 Read the response:
@@ -41,7 +41,7 @@ RES="${REQ%.req.md}.res.md"
 Sessions keep turn history so the receiver sees full context from both agents.
 
 ```bash
-REQ=$(~/.claude/skills/relay/scripts/relay req --from claude --to codex --session auth-refactor "Fix the issues from my review. Run pytest to verify.") && codex exec --model gpt-5.3-codex -c 'model_reasoning_effort="xhigh"' --full-auto "Read and execute $REQ"
+REQ=$(~/.claude/skills/relay/scripts/relay req --from claude --to codex --session auth-refactor "Fix the issues from my review. Run pytest to verify.") && codex exec --model gpt-5.4 -c 'model_reasoning_effort="xhigh"' --full-auto "Read and execute $REQ"
 ```
 
 Read the response:
