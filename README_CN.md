@@ -6,8 +6,10 @@
 
 Relay 让一个 agent 像调用函数一样调用另一个 agent。写任务、调用对端、读结果。极简协议、自然语言通信、完全可审计。
 
-```
-relay(task, session?) → {status, verify, body}
+```bash
+relay call --name <slug> --effort <level> <<'BODY'
+task
+BODY
 ```
 
 由 Claude Code 和 Codex 共同开发。
@@ -76,16 +78,17 @@ sequenceDiagram
     participant I as 发起方
     participant R as 接收方
 
-    I->>I: 1. $RELAY req --name ... "task"
-    Note left of I: → .relay/{timestamp}-{name}.req.md
-    I->>R: 2. "读取并执行该文件"
-    R->>R: 3. 读取请求
-    R->>R: 4. 执行任务
-    R->>R: 5. 运行验证（如果有）
-    R->>I: 6. 写入 .relay/{id}.res.md
-    I->>I: 7. 检查 status + verify
-    I->>I: 8. 汇总给用户
+    I->>I: 1. relay call --name ... <<'BODY'
+    Note left of I: 生成 .relay/{id}.req.md
+    Note left of I: 调用对端 agent
+    R->>R: 2. 读取请求
+    R->>R: 3. 执行任务
+    R->>R: 4. 运行验证（如果有）
+    R->>I: 5. 写入 .relay/{id}.res.md
+    I->>I: 6. 输出响应内容
 ```
+
+`call` 子命令封装了完整的往返流程：生成请求文件、调用对端 agent、将响应内容输出到 stdout。脚本从安装路径自动检测调用方和对端。
 
 ---
 
@@ -156,22 +159,25 @@ curl -sL https://raw.githubusercontent.com/chrisliu298/relay/main/codex/skills/r
 
 ### 单次调用
 
-`scripts/relay` 脚本生成一个自包含请求，包含 frontmatter、正文和响应模板。`--name` 提供可读的短名称；脚本自动添加时间戳前缀。
+一条命令完成完整往返：生成请求、调用对端、输出响应。
 
 **Claude Code → Codex：**
 
 ```bash
-REQ=$(~/.claude/skills/relay/scripts/relay req --from claude --to codex --name auth-review "检查 src/auth.py 的安全问题。运行 pytest 验证。") && codex exec --model gpt-5.4 -c 'model_reasoning_effort="medium"' --full-auto "Read and execute $REQ"
+~/.claude/skills/relay/scripts/relay call --name auth-review --effort medium <<'BODY'
+检查 src/auth.py 的安全问题。运行 pytest 验证。
+BODY
 ```
 
 **Codex → Claude Code：**
 
 ```bash
-REQ=$(~/.codex/skills/relay/scripts/relay req --from codex --to claude --name auth-review "检查 src/auth.py 的安全问题。运行 pytest 验证。") && env -u CLAUDECODE claude --model opus -p --dangerously-skip-permissions "Read and execute $REQ"
+~/.codex/skills/relay/scripts/relay call --name auth-review <<'BODY'
+检查 src/auth.py 的安全问题。运行 pytest 验证。
+BODY
 ```
 
-- `env -u CLAUDECODE` 防止嵌套会话错误
-- `--dangerously-skip-permissions` 非交互模式必需（仅限可信目录）
+`--name` 提供可读的短名称；脚本自动添加时间戳前缀。`--effort` 控制 Codex 的推理力度（默认 `medium`，调用 Claude 时忽略）。
 
 生成的请求文件 `.relay/20260219-1630-auth-review.req.md`：
 
@@ -181,6 +187,7 @@ relay: 4
 id: 20260219-1630-auth-review
 from: claude
 to: codex
+effort: medium
 ---
 
 检查 src/auth.py 的安全问题。运行 pytest 验证。
@@ -215,20 +222,24 @@ Format:
 **Claude Code → Codex：**
 
 ```bash
-REQ=$(~/.claude/skills/relay/scripts/relay req --from claude --to codex --session auth-refactor "修复问题并添加测试。运行 pytest 验证。") && codex exec --model gpt-5.4 -c 'model_reasoning_effort="medium"' --full-auto "Read and execute $REQ"
+~/.claude/skills/relay/scripts/relay call --session auth-refactor --effort medium <<'BODY'
+修复问题并添加测试。运行 pytest 验证。
+BODY
 ```
 
 **Codex → Claude Code：**
 
 ```bash
-REQ=$(~/.codex/skills/relay/scripts/relay req --from codex --to claude --session auth-refactor "修复问题并添加测试。运行 pytest 验证。") && env -u CLAUDECODE claude --model opus -p --dangerously-skip-permissions "Read and execute $REQ"
+~/.codex/skills/relay/scripts/relay call --session auth-refactor <<'BODY'
+修复问题并添加测试。运行 pytest 验证。
+BODY
 ```
 
 会话名必须是 slug（`[a-z0-9-]+`）。会话按顺序执行 — 同一时间只有一个写入者。
 
 ### 输出
 
-响应文件（单次或会话）：
+`call` 子命令将响应文件内容输出到 stdout。响应文件（单次或会话）：
 
 ```markdown
 ---
@@ -253,13 +264,28 @@ verify: pass
 
 若调用后响应文件不存在，对端失败或超时。
 
+### 底层命令
+
+如需自定义工作流或手动编排，可直接使用 `req` 和 `res` 子命令。正文可通过参数或 stdin 管道传入。
+
+```bash
+# 仅生成请求
+REQ=$(~/.claude/skills/relay/scripts/relay req --from claude --to codex --name slug "task body")
+
+# 手动调用对端
+codex exec --model gpt-5.4 -c 'model_reasoning_effort="medium"' --full-auto "Read and execute $REQ"
+
+# 响应文件路径
+echo "${REQ%.req.md}.res.md"
+```
+
 ---
 
 ## 安全
 
 - `.relay/` 已加入 `.gitignore` — 脚本自动处理
-- Codex 默认 `workspace-write`（`--full-auto`）
-- Claude 非交互模式使用 `--dangerously-skip-permissions`（仅限可信目录）
+- **Codex** 默认 `--full-auto`（`workspace-write` 沙盒）
+- **Claude** 非交互模式使用 `--dangerously-skip-permissions` — 仅限可信仓库
 - 清理：`rm .relay/*.md`（单次）或 `rm -rf .relay/{session}/`（会话）
 
 ---

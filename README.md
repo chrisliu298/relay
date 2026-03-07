@@ -6,8 +6,10 @@ English | [中文](README_CN.md)
 
 Relay lets one agent call another like a function. Write a task, invoke the peer, read the result. Minimal protocol, natural language, fully auditable.
 
-```
-relay(task, session?) → {status, verify, body}
+```bash
+relay call --name <slug> --effort <level> <<'BODY'
+task
+BODY
 ```
 
 Co-authored by Claude Code and Codex.
@@ -76,16 +78,17 @@ sequenceDiagram
     participant I as Initiator
     participant R as Receiver
 
-    I->>I: 1. $RELAY req --name ... "task"
-    Note left of I: → .relay/{timestamp}-{name}.req.md
-    I->>R: 2. "Read and execute the file"
-    R->>R: 3. Read request
-    R->>R: 4. Execute task
-    R->>R: 5. Run verification (if given)
-    R->>I: 6. Write .relay/{id}.res.md
-    I->>I: 7. Check status + verify
-    I->>I: 8. Report to user
+    I->>I: 1. relay call --name ... <<'BODY'
+    Note left of I: generates .relay/{id}.req.md
+    Note left of I: invokes peer agent
+    R->>R: 2. Read request
+    R->>R: 3. Execute task
+    R->>R: 4. Run verification (if given)
+    R->>I: 5. Write .relay/{id}.res.md
+    I->>I: 6. Print response content
 ```
+
+The `call` subcommand wraps the full round-trip: generates the request file, invokes the peer agent, and prints the response content to stdout. The script auto-detects caller and peer from its install path.
 
 ---
 
@@ -156,22 +159,25 @@ Each direction pins a specific model. Do **not** substitute other models — the
 
 ### One-Shot Call
 
-The `scripts/relay` script generates a self-contained request with frontmatter, body, and response template. The `--name` flag provides a human-readable slug; the script prepends a timestamp automatically.
+One command does the full round-trip: generates the request, invokes the peer, prints the response.
 
 **Claude Code → Codex:**
 
 ```bash
-REQ=$(~/.claude/skills/relay/scripts/relay req --from claude --to codex --name auth-review "Review src/auth.py for security issues. Run pytest to verify.") && codex exec --model gpt-5.4 -c 'model_reasoning_effort="medium"' --full-auto "Read and execute $REQ"
+~/.claude/skills/relay/scripts/relay call --name auth-review --effort medium <<'BODY'
+Review src/auth.py for security issues. Run pytest to verify.
+BODY
 ```
 
 **Codex → Claude Code:**
 
 ```bash
-REQ=$(~/.codex/skills/relay/scripts/relay req --from codex --to claude --name auth-review "Review src/auth.py for security issues. Run pytest to verify.") && env -u CLAUDECODE claude --model opus -p --dangerously-skip-permissions "Read and execute $REQ"
+~/.codex/skills/relay/scripts/relay call --name auth-review <<'BODY'
+Review src/auth.py for security issues. Run pytest to verify.
+BODY
 ```
 
-- `env -u CLAUDECODE` prevents nested-session errors
-- `--dangerously-skip-permissions` is required for non-interactive mode
+The `--name` flag provides a human-readable slug; the script prepends a timestamp automatically. The `--effort` flag controls Codex's reasoning effort (defaults to `medium`, ignored when calling Claude).
 
 Generated request `.relay/20260219-1630-auth-review.req.md`:
 
@@ -181,6 +187,7 @@ relay: 4
 id: 20260219-1630-auth-review
 from: claude
 to: codex
+effort: medium
 ---
 
 Review src/auth.py for security issues. Run pytest to verify.
@@ -215,20 +222,24 @@ Sessions keep full turn history so the receiver reads all prior exchanges for co
 **Claude Code → Codex:**
 
 ```bash
-REQ=$(~/.claude/skills/relay/scripts/relay req --from claude --to codex --session auth-refactor "Fix the issues and add tests. Run pytest to verify.") && codex exec --model gpt-5.4 -c 'model_reasoning_effort="medium"' --full-auto "Read and execute $REQ"
+~/.claude/skills/relay/scripts/relay call --session auth-refactor --effort medium <<'BODY'
+Fix the issues and add tests. Run pytest to verify.
+BODY
 ```
 
 **Codex → Claude Code:**
 
 ```bash
-REQ=$(~/.codex/skills/relay/scripts/relay req --from codex --to claude --session auth-refactor "Fix the issues and add tests. Run pytest to verify.") && env -u CLAUDECODE claude --model opus -p --dangerously-skip-permissions "Read and execute $REQ"
+~/.codex/skills/relay/scripts/relay call --session auth-refactor <<'BODY'
+Fix the issues and add tests. Run pytest to verify.
+BODY
 ```
 
 Session names must be slugs (`[a-z0-9-]+`). Sessions are sequential — one writer at a time.
 
 ### Output
 
-The response file (one-shot or session):
+The `call` subcommand prints the response file content to stdout. The response file (one-shot or session):
 
 ```markdown
 ---
@@ -252,6 +263,21 @@ All 12 tests pass after changes.
 - **body**: findings, changes, reasoning — free-form markdown
 
 If the response file is missing after invocation, the peer failed or timed out.
+
+### Low-Level Commands
+
+For custom workflows or manual orchestration, use `req` and `res` directly. Body can be passed as an argument or piped via stdin.
+
+```bash
+# Generate request only
+REQ=$(~/.claude/skills/relay/scripts/relay req --from claude --to codex --name slug "task body")
+
+# Then invoke the peer manually
+codex exec --model gpt-5.4 -c 'model_reasoning_effort="medium"' --full-auto "Read and execute $REQ"
+
+# Response path
+echo "${REQ%.req.md}.res.md"
+```
 
 ---
 
