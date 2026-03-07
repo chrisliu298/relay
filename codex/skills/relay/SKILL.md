@@ -17,7 +17,7 @@ task
 BODY
 ```
 
-The script auto-detects caller/peer from its install path. Use `scripts/relay` inside this skill directory.
+The script auto-detects caller/peer from its install path. Always invoke via its absolute path as shown in the examples below.
 
 ## One-Shot Call
 
@@ -39,6 +39,10 @@ BODY
 
 Rule of thumb: if the user says "continue", "follow up", or references a prior Claude exchange, use `--session`. Otherwise, use `--name`.
 
+## Effort Level
+
+The `--effort` flag is accepted but currently has no effect when calling Claude (Claude does not expose a reasoning effort parameter). The script defaults to `medium`. If a future Claude release supports effort tuning, the flag will be wired through automatically.
+
 ## Prompting Claude
 
 Be clear and direct. Use XML tags to separate concerns. Key patterns:
@@ -49,7 +53,7 @@ Be clear and direct. Use XML tags to separate concerns. Key patterns:
 
 Don't over-prompt — Claude Opus is proactive; avoid excessive MUSTs/NEVERs.
 
-See `references/prompting-claude.md` for the full guide.
+See `~/.codex/skills/relay/references/prompting-claude.md` for the full guide.
 
 **Example:**
 
@@ -86,15 +90,16 @@ If the response file is missing, the script reports failure — do not retry.
 
 ## Low-Level Commands
 
-For custom workflows or manual orchestration, use `req` and `res` directly. Body can be passed as an argument or piped via stdin.
+For custom workflows or manual orchestration, use `req` and `res` directly. Body can be passed as an argument or piped via stdin. If auto-detection fails, pass `--from codex --to claude` explicitly to `call`.
 
 ```bash
 # Generate request only
 REQ=$(~/.codex/skills/relay/scripts/relay req --from codex --to claude --name slug "task body")
 
-# Then invoke claude manually
+# Then invoke claude manually (--dangerously-skip-permissions is required
+# because Claude runs non-interactively and cannot prompt for approval)
 env -u CLAUDECODE claude --model opus -p --dangerously-skip-permissions "Read and execute $REQ"
 
 # Read response
-cat "${REQ%.req.md}.res.md"
+# Response path: ${REQ%.req.md}.res.md
 ```

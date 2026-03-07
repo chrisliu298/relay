@@ -44,9 +44,9 @@ detect_peers() {
   local script_dir
   script_dir=$(cd "$(dirname "$0")/.." && pwd)
   case "$script_dir" in
-    */.claude/* | */claude/*) echo "claude codex" ;;
-    */.codex/* | */codex/*)   echo "codex claude" ;;
-    *)                        echo "" ;;
+    */.claude/skills/* | */claude/skills/*) echo "claude codex" ;;
+    */.codex/skills/* | */codex/skills/*)   echo "codex claude" ;;
+    *)                                      echo "" ;;
   esac
 }
 
@@ -67,7 +67,8 @@ cmd_req() {
 
   if [ -z "$body" ] && [ ! -t 0 ]; then
     local first_line
-    if IFS= read -r -t 1 first_line; then
+    IFS= read -r -t 1 first_line || true
+    if [ -n "$first_line" ]; then
       body=$(printf '%s\n' "$first_line"; cat)
     fi
   fi
@@ -166,7 +167,8 @@ cmd_res() {
 
   if [ -z "$body" ] && [ ! -t 0 ]; then
     local first_line
-    if IFS= read -r -t 1 first_line; then
+    IFS= read -r -t 1 first_line || true
+    if [ -n "$first_line" ]; then
       body=$(printf '%s\n' "$first_line"; cat)
     fi
   fi
@@ -236,7 +238,8 @@ cmd_call() {
 
   if [ -z "$body" ] && [ ! -t 0 ]; then
     local first_line
-    if IFS= read -r -t 1 first_line; then
+    IFS= read -r -t 1 first_line || true
+    if [ -n "$first_line" ]; then
       body=$(printf '%s\n' "$first_line"; cat)
     fi
   fi
@@ -279,6 +282,7 @@ cmd_call() {
   if [ "$to" = "codex" ]; then
     codex exec --model gpt-5.4 -c "model_reasoning_effort=\"$effort\"" --full-auto "Read and execute $req_path" > /dev/null
   elif [ "$to" = "claude" ]; then
+    [ "$effort" = "medium" ] || echo "relay: warning: --effort is ignored when calling claude" >&2
     env -u CLAUDECODE claude --model opus -p --dangerously-skip-permissions "Read and execute $req_path" > /dev/null
   else
     die "call: unknown peer '$to' — expected 'codex' or 'claude'"

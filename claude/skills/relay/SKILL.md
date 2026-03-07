@@ -62,7 +62,7 @@ Use XML tags for structure. Key patterns:
 - `<completeness_contract>` — what "done" means explicitly
 - `<verification_loop>` — check correctness before finalizing
 
-See `references/prompting-codex.md` for the full guide.
+See `~/.claude/skills/relay/references/prompting-codex.md` for the full guide.
 
 **Example:**
 
@@ -111,7 +111,7 @@ Bash(timeout: 600000)
 
 ## Low-Level Commands
 
-For custom workflows or manual orchestration, use `req` and `res` directly. Body can be passed as an argument or piped via stdin.
+For custom workflows or manual orchestration, use `req` and `res` directly. Body can be passed as an argument or piped via stdin. If auto-detection fails, pass `--from claude --to codex` explicitly to `call`.
 
 ```bash
 # Generate request only
@@ -120,6 +120,6 @@ REQ=$(~/.claude/skills/relay/scripts/relay req --from claude --to codex --name s
 # Then invoke codex manually
 codex exec --model gpt-5.4 -c 'model_reasoning_effort="medium"' --full-auto "Read and execute $REQ"
 
-# Read response
-cat "${REQ%.req.md}.res.md"
+# Read response (use the Read tool, not cat)
+# Response path: ${REQ%.req.md}.res.md
 ```
