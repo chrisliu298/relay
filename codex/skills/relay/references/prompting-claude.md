@@ -24,8 +24,15 @@ you want Claude to make changes, say so directly.
 - Good: "Improve the error handling in src/api.py."
 - Good: "Make these edits to the authentication flow."
 
-If the task is ambiguous, Claude may default to suggesting rather than
-implementing. In relay tasks you almost always want implementation, so be direct.
+To make Claude proactive about taking action by default:
+
+```xml
+<default_to_action>
+By default, implement changes rather than only suggesting them. If the user's
+intent is unclear, infer the most useful likely action and proceed, using tools
+to discover any missing details instead of guessing.
+</default_to_action>
+```
 
 ## Add Context and Motivation
 
@@ -45,40 +52,86 @@ brief context about what role to adopt makes a measurable difference.
 - "You are a security auditor reviewing this codebase for vulnerabilities."
 - "You are a performance engineer optimizing database queries."
 
-## Use Structured Sections and XML Tags
+## Structure Prompts with XML Tags
 
-For complex tasks, organize with clear headers or XML-style tags. Put long
-context or data at the top, instructions and query at the bottom — this can
-improve response quality significantly.
+XML tags help Claude parse complex prompts unambiguously. Wrap each type of
+content in its own tag to reduce misinterpretation. Use consistent, descriptive
+tag names and nest tags when content has a natural hierarchy.
 
-- Use descriptive section headers for different parts of the task
-- Use XML tags like `<context>`, `<instructions>`, `<constraints>` to separate
-  concerns unambiguously — Claude parses these reliably
-- For multi-document input, label each document clearly with source and content
-- Ask Claude to quote relevant parts of documents before analyzing — this helps
-  it cut through noise in long inputs
+```xml
+<context>
+We're preparing for a security audit next week. The auth module was last
+reviewed 6 months ago and has had significant changes since.
+</context>
+
+<instructions>
+1. Read src/auth.py and identify all vulnerabilities
+2. Fix each one in-place
+3. Run pytest to verify all tests pass
+4. Return a summary: one line per fix, with line number and what changed
+</instructions>
+```
+
+For multi-document input, structure with `<documents>`, `<document>`,
+`<source>`, and `<document_content>` tags:
+
+```xml
+<documents>
+  <document index="1">
+    <source>src/auth.py</source>
+    <document_content>
+      {{AUTH_PY_CONTENT}}
+    </document_content>
+  </document>
+  <document index="2">
+    <source>src/middleware.py</source>
+    <document_content>
+      {{MIDDLEWARE_CONTENT}}
+    </document_content>
+  </document>
+</documents>
+
+Analyze both files for authentication vulnerabilities and cross-cutting concerns.
+```
+
+**Best practice**: Put long documents and data at the top of the prompt, above
+your instructions and query. Queries at the end can improve response quality by
+up to 30% with complex, multi-document inputs.
 
 ## Provide Examples
 
-When output format matters, include 3-5 examples showing input and expected
-output. This is one of the most reliable ways to steer format, tone, and
-structure.
+When output format matters, include 3-5 examples. Wrap examples in `<example>`
+tags (multiple in `<examples>`) so Claude distinguishes them from instructions.
 
-- Wrap examples in `<example>` tags (multiple in `<examples>`) so Claude
-  distinguishes them from instructions
-- Cover edge cases, not just the happy path
-- Vary examples enough that Claude doesn't pick up unintended patterns
-- Include both input and expected output in each example
+```xml
+<examples>
+  <example>
+    <input>Review src/auth.py for SQL injection</input>
+    <output>
+    - Line 42: `execute(f"SELECT * FROM users WHERE id={user_id}")` — SQL
+      injection via string interpolation. Fixed with parameterized query.
+    - Line 87: `cursor.execute("DELETE FROM sessions WHERE token='" + token +
+      "'")` — SQL injection via concatenation. Fixed with parameterized query.
+    </output>
+  </example>
+</examples>
+```
+
+Cover edge cases, not just the happy path. Vary examples enough that Claude
+doesn't pick up unintended patterns.
 
 ## Leverage Parallel Execution
 
-Claude excels at parallel tool calls. Structure tasks to enable this — Claude
-will naturally parallelize independent operations.
+Claude excels at parallel tool calls. To maximize this:
 
-- "Read all three config files and compare their settings" — Claude will read
-  them in parallel
-- For independent subtasks, list them as separate items rather than a single
-  sequential chain
+```xml
+<use_parallel_tool_calls>
+If you intend to call multiple tools and there are no dependencies between the
+calls, make all independent calls in parallel. However, if some calls depend on
+previous results, call them sequentially. Never use placeholders or guess
+missing parameters.
+</use_parallel_tool_calls>
+```
 
 ## Ask Claude to Self-Check
 
@@ -91,11 +144,10 @@ finishing. This catches errors reliably, especially for coding and math.
 
 ## Don't Over-Prompt
 
-Claude Opus is proactive and fills in reasonable gaps. Heavy-handed prompting
-that was needed for older models can cause overtriggering with current models.
+Claude Opus is proactive and follows normal-weight instructions reliably.
+Heavy-handed prompting that was needed for older models can cause overtriggering.
 
-- Avoid excessive MUST/NEVER/ALWAYS unless truly non-negotiable
-- Trust the model to make reasonable choices within your constraints
 - Instead of "CRITICAL: You MUST use this tool when...", use "Use this tool
-  when..." — Claude follows normal-weight instructions reliably
+  when..." — Claude follows this reliably
+- Avoid excessive MUST/NEVER/ALWAYS unless truly non-negotiable
 - Reserve strong directives for genuinely safety-critical requirements

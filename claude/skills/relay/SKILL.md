@@ -42,9 +42,10 @@ Before raising effort, first try improving the prompt: add an output contract, a
 
 When crafting the task body for Codex, apply these patterns for best results:
 
+- **Use XML tags** for structure — `<output_contract>`, `<completeness_contract>`, `<verification_loop>`, `<dependency_checks>`
 - Define an **output contract** — exact format, length, and structure expected
 - Define a **completeness contract** — what "done" means explicitly
-- Add a **verification step** — check correctness against each requirement
+- Add a **verification loop** — check correctness against each requirement
 - Use **flat formatting** — modular sections with headers, no nested bullets
 - Include **dependency checks** — don't let it skip prerequisite steps
 
@@ -59,9 +60,17 @@ Read `references/prompting-codex.md` for the full guide and reasoning effort sel
 > 3. Add `reclaim_stale()` method
 > 4. Keep backward compatibility
 >
-> Output: summary of changes, one per line, with file path and description.
-> Verification: run `pytest tests/test_pool.py` — all tests must pass.
+> \<output_contract>
+> Summary of changes, one per line, with file path and description.
+> \</output_contract>
+>
+> \<verification_loop>
+> Run `pytest tests/test_pool.py` — all tests must pass.
+> \</verification_loop>
+>
+> \<completeness_contract>
 > Done means: all 4 requirements implemented, tests pass, no new lint errors.
+> \</completeness_contract>
 
 ## Choosing One-Shot vs Session
 

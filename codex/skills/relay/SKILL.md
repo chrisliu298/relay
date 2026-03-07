@@ -32,20 +32,28 @@ When crafting the task body for Claude, apply these patterns for best results:
 
 - Be **clear and direct** — explicit instructions, numbered steps for multi-part tasks
 - Add **context and motivation** — explain why, not just what
-- Use **structured sections** — headers for complex tasks; place data first, query last
-- Include **examples** if output format matters (3-5 diverse examples)
+- **Use XML tags** for structure — `<context>`, `<instructions>`, `<example>` to separate concerns
+- Include **examples** if output format matters (3-5 diverse examples in `<examples>` tags)
 - Don't over-prompt — Claude Opus is proactive; avoid excessive MUSTs/NEVERs
 
 Read `references/prompting-claude.md` for the full guide.
 
 **Example — well-structured task body:**
 
-> We're hardening auth before a security audit. Review src/auth.py for OWASP Top 10 vulnerabilities, focusing on injection and broken access control.
+> \<context>
+> We're hardening auth before a security audit. The auth module has had
+> significant changes in the last 6 months.
+> \</context>
+>
+> \<instructions>
+> Review src/auth.py for OWASP Top 10 vulnerabilities, focusing on injection
+> and broken access control.
 >
 > 1. Read src/auth.py and identify all vulnerabilities
 > 2. Fix each one in-place
 > 3. Run pytest to verify all tests pass
 > 4. Return a summary: one line per fix, with line number and what changed
+> \</instructions>
 
 ## Choosing One-Shot vs Session
 
