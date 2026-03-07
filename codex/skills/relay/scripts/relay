@@ -51,7 +51,7 @@ detect_peers() {
 }
 
 cmd_req() {
-  local from="" to="" session="" name="" body=""
+  local from="" to="" session="" name="" effort="" body=""
 
   while [ $# -gt 0 ]; do
     case "$1" in
@@ -59,6 +59,7 @@ cmd_req() {
       --to)      to="$2"; shift 2 ;;
       --session) session="$2"; shift 2 ;;
       --name)    name="$2"; shift 2 ;;
+      --effort)  effort="$2"; shift 2 ;;
       --)        shift; body="$*"; break ;;
       -*)        die "unknown flag: $1" ;;
       *)         body="$*"; break ;;
@@ -95,7 +96,7 @@ cmd_req() {
 relay: $VERSION
 id: $id
 from: $from
-to: $to
+to: $to$(if [ -n "$effort" ]; then printf '\neffort: %s' "$effort"; fi)
 ---
 
 $body
@@ -125,7 +126,7 @@ EOF
 relay: $VERSION
 id: $id
 from: $from
-to: $to
+to: $to$(if [ -n "$effort" ]; then printf '\neffort: %s' "$effort"; fi)
 ---
 
 $body
@@ -265,7 +266,7 @@ cmd_call() {
   esac
 
   # Build req
-  local req_args=(--from "$from" --to "$to")
+  local req_args=(--from "$from" --to "$to" --effort "$effort")
   if [ -n "$session" ]; then
     req_args+=(--session "$session")
   elif [ -n "$name" ]; then
