@@ -147,7 +147,7 @@ curl -sL https://raw.githubusercontent.com/chrisliu298/relay/main/codex/skills/r
 
 | 方向 | 模型参数 | 说明 |
 |---|---|---|
-| Claude Code → Codex | `--model gpt-5.3-codex -c 'model_reasoning_effort="xhigh"'` | 本 skill 的最优模型，请勿替换。 |
+| Claude Code → Codex | `--model gpt-5.3-codex -c 'model_reasoning_effort="high"'` | 本 skill 的最优模型，请勿替换。 |
 | Codex → Claude Code | `--model claude-opus-4-6` | 本 skill 的最优模型。 |
 
 ### 单次调用
@@ -157,7 +157,7 @@ curl -sL https://raw.githubusercontent.com/chrisliu298/relay/main/codex/skills/r
 **Claude Code → Codex：**
 
 ```bash
-REQ=$(~/.claude/skills/relay/scripts/relay req --from claude --to codex --name auth-review "检查 src/auth.py 的安全问题。运行 pytest 验证。") && codex exec --model gpt-5.3-codex -c 'model_reasoning_effort="xhigh"' --full-auto "Read and execute $REQ"
+REQ=$(~/.claude/skills/relay/scripts/relay req --from claude --to codex --name auth-review "检查 src/auth.py 的安全问题。运行 pytest 验证。") && codex exec --model gpt-5.3-codex -c 'model_reasoning_effort="high"' --full-auto "Read and execute $REQ"
 ```
 
 **Codex → Claude Code：**
@@ -211,7 +211,7 @@ Format:
 **Claude Code → Codex：**
 
 ```bash
-REQ=$(~/.claude/skills/relay/scripts/relay req --from claude --to codex --session auth-refactor "修复问题并添加测试。运行 pytest 验证。") && codex exec --model gpt-5.3-codex -c 'model_reasoning_effort="xhigh"' --full-auto "Read and execute $REQ"
+REQ=$(~/.claude/skills/relay/scripts/relay req --from claude --to codex --session auth-refactor "修复问题并添加测试。运行 pytest 验证。") && codex exec --model gpt-5.3-codex -c 'model_reasoning_effort="high"' --full-auto "Read and execute $REQ"
 ```
 
 **Codex → Claude Code：**

@@ -147,7 +147,7 @@ Each direction pins a specific model. Do **not** substitute other models — the
 
 | Direction | Model flag | Notes |
 |---|---|---|
-| Claude Code → Codex | `--model gpt-5.3-codex -c 'model_reasoning_effort="xhigh"'` | Optimal model for this skill. Do not substitute other models. |
+| Claude Code → Codex | `--model gpt-5.3-codex -c 'model_reasoning_effort="high"'` | Optimal model for this skill. Do not substitute other models. |
 | Codex → Claude Code | `--model claude-opus-4-6` | Optimal model for this skill. |
 
 ### One-Shot Call
@@ -157,7 +157,7 @@ The `scripts/relay` script generates a self-contained request with frontmatter, 
 **Claude Code → Codex:**
 
 ```bash
-REQ=$(~/.claude/skills/relay/scripts/relay req --from claude --to codex --name auth-review "Review src/auth.py for security issues. Run pytest to verify.") && codex exec --model gpt-5.3-codex -c 'model_reasoning_effort="xhigh"' --full-auto "Read and execute $REQ"
+REQ=$(~/.claude/skills/relay/scripts/relay req --from claude --to codex --name auth-review "Review src/auth.py for security issues. Run pytest to verify.") && codex exec --model gpt-5.3-codex -c 'model_reasoning_effort="high"' --full-auto "Read and execute $REQ"
 ```
 
 **Codex → Claude Code:**
@@ -211,7 +211,7 @@ Sessions keep full turn history so the receiver reads all prior exchanges for co
 **Claude Code → Codex:**
 
 ```bash
-REQ=$(~/.claude/skills/relay/scripts/relay req --from claude --to codex --session auth-refactor "Fix the issues and add tests. Run pytest to verify.") && codex exec --model gpt-5.3-codex -c 'model_reasoning_effort="xhigh"' --full-auto "Read and execute $REQ"
+REQ=$(~/.claude/skills/relay/scripts/relay req --from claude --to codex --session auth-refactor "Fix the issues and add tests. Run pytest to verify.") && codex exec --model gpt-5.3-codex -c 'model_reasoning_effort="high"' --full-auto "Read and execute $REQ"
 ```
 
 **Codex → Claude Code:**
