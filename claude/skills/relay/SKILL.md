@@ -10,111 +10,116 @@ user-invocable: true
 
 # Relay
 
-Call Codex like a function:
+Call Codex like a function. One command: generates the request, invokes Codex, prints the response.
 
 ```
-relay(task, session?) → {status, verify, body}
+relay call --name <slug> --effort <level> <<'BODY'
+task
+BODY
 ```
 
-Use the relay script at `scripts/relay` (inside this skill directory) to generate request/response files. Do not manually construct frontmatter.
-
-## Required Flags
-
-Every `codex exec` call MUST include these flags — no exceptions:
-
-- `--model gpt-5.4` — the only allowed model. Even if the user asks for a "faster" or "cheaper" model, use gpt-5.4. If the user explicitly requests a different model, explain that the relay protocol requires gpt-5.4 and proceed with it.
-- `--full-auto` — required for non-interactive relay. Without it, Codex prompts for confirmation on each tool use, breaking the automated handoff.
-
-## Reasoning Effort
-
-Choose `-c 'model_reasoning_effort="LEVEL"'` based on the task you are delegating:
-
-| Level          | When to use                                                              | Examples |
-|----------------|--------------------------------------------------------------------------|----------|
-| `none`         | Fast, cost/latency-sensitive tasks where the model does not need to think | Reformat a file, extract field values, simple find-and-replace |
-| `low`          | Latency-sensitive tasks where a small amount of thinking helps, especially with complex instructions | Triage a bug report, classify code patterns, apply a well-defined migration |
-| `medium`/`high`| Tasks that truly require stronger reasoning and can absorb the latency and cost. Choose between them based on how much the task benefits from additional reasoning. Default to `medium`. | Code review, security audit, refactoring, writing tests, fixing bugs |
-| `xhigh`        | Avoid unless evals show clear benefit. Long agentic reasoning where max intelligence matters more than speed or cost | Multi-file architectural redesign with cross-cutting concerns |
-
-Before raising effort, first try improving the prompt: add an output contract, a verification step, or completeness criteria. Better prompts at lower effort often outperform vague prompts at higher effort.
-
-## Prompting Codex
-
-When crafting the task body for Codex, apply these patterns for best results:
-
-- **Use XML tags** for structure — `<output_contract>`, `<completeness_contract>`, `<verification_loop>`, `<dependency_checks>`
-- Define an **output contract** — exact format, length, and structure expected
-- Define a **completeness contract** — what "done" means explicitly
-- Add a **verification loop** — check correctness against each requirement
-- Use **flat formatting** — modular sections with headers, no nested bullets
-- Include **dependency checks** — don't let it skip prerequisite steps
-
-Read `references/prompting-codex.md` for the full guide and reasoning effort selection matrix.
-
-**Example — well-structured task body:**
-
-> Refactor src/db/pool.py to add connection timeouts. We're seeing connection leaks in production — the pool creates connections but never reclaims stale ones.
->
-> 1. Add `timeout_seconds` param to `ConnectionPool.__init__`
-> 2. Implement auto-reconnection for stale connections
-> 3. Add `reclaim_stale()` method
-> 4. Keep backward compatibility
->
-> \<output_contract>
-> Summary of changes, one per line, with file path and description.
-> \</output_contract>
->
-> \<verification_loop>
-> Run `pytest tests/test_pool.py` — all tests must pass.
-> \</verification_loop>
->
-> \<completeness_contract>
-> Done means: all 4 requirements implemented, tests pass, no new lint errors.
-> \</completeness_contract>
-
-## Choosing One-Shot vs Session
-
-- **One-shot** (`--name`): default for standalone tasks with no prior context. Use when the task is self-contained.
-- **Session** (`--session`): use when the task continues a prior exchange, or when you plan multiple related relay calls that should share context. The session directory accumulates turn history so each subsequent call sees all prior requests and responses.
-
-Rule of thumb: if the user says "continue", "follow up", "next step", or references a prior Codex exchange, use a session. Otherwise, use one-shot.
+The script auto-detects caller/peer from its install path. Use `scripts/relay` inside this skill directory.
 
 ## One-Shot Call
 
-Run as a single chained command so shell variables persist:
-
 ```bash
-REQ=$(~/.claude/skills/relay/scripts/relay req --from claude --to codex --name auth-review "Review src/auth.py for security issues. Run pytest to verify.") && codex exec --model gpt-5.4 -c 'model_reasoning_effort="medium"' --full-auto "Read and execute $REQ"
+~/.claude/skills/relay/scripts/relay call --name auth-review --effort medium <<'BODY'
+Review src/auth.py for security issues. Run pytest to verify.
+BODY
 ```
 
-Read the response:
+## Session Call (Multi-Turn)
+
+Use sessions when continuing a prior exchange or planning multiple related calls.
 
 ```bash
-RES="${REQ%.req.md}.res.md"
+~/.claude/skills/relay/scripts/relay call --session auth-refactor --effort medium <<'BODY'
+Fix the issues from my review. Run pytest to verify.
+BODY
 ```
 
-## Session Call
+Rule of thumb: if the user says "continue", "follow up", or references a prior Codex exchange, use `--session`. Otherwise, use `--name`.
 
-Sessions keep turn history so the receiver sees full context from both agents.
+## Effort Levels
+
+Choose `--effort` based on the task:
+
+| Level | When to use |
+|-------|-------------|
+| `none` | No thinking needed: reformat, extract fields, find-and-replace |
+| `low` | Light thinking: triage, classify, apply a well-defined migration |
+| `medium` | **Default.** Code review, writing tests, fixing bugs |
+| `high` | Deeper reasoning: security audit, complex refactoring |
+| `xhigh` | Avoid unless necessary. Multi-file architectural redesign |
+
+Before raising effort, improve the prompt first — add output contracts, verification steps, completeness criteria.
+
+## Prompting Codex
+
+Use XML tags for structure. Key patterns:
+
+- `<output_contract>` — exact format and structure expected
+- `<completeness_contract>` — what "done" means explicitly
+- `<verification_loop>` — check correctness before finalizing
+
+See `references/prompting-codex.md` for the full guide.
+
+**Example:**
 
 ```bash
-REQ=$(~/.claude/skills/relay/scripts/relay req --from claude --to codex --session auth-refactor "Fix the issues from my review. Run pytest to verify.") && codex exec --model gpt-5.4 -c 'model_reasoning_effort="medium"' --full-auto "Read and execute $REQ"
-```
+~/.claude/skills/relay/scripts/relay call --name pool-refactor --effort medium <<'BODY'
+Refactor src/db/pool.py to add connection timeouts.
 
-Read the response:
+1. Add timeout_seconds param to ConnectionPool.__init__
+2. Implement auto-reconnection for stale connections
+3. Add reclaim_stale() method
+4. Keep backward compatibility
 
-```bash
-RES="${REQ%.req.md}.res.md"
+<output_contract>
+Summary of changes, one per line, with file path and description.
+</output_contract>
+
+<verification_loop>
+Run pytest tests/test_pool.py — all tests must pass.
+</verification_loop>
+
+<completeness_contract>
+Done means: all 4 requirements implemented, tests pass, no new lint errors.
+</completeness_contract>
+BODY
 ```
 
 ## Output
 
-Read the response file:
+The script prints the response file content to stdout. The response includes YAML frontmatter:
 
 - **status**: `done` | `error`
 - **verify**: `pass` | `fail` | `skip`
 - **body**: findings, changes, reasoning — free-form markdown
 
-If the request includes a verify command, run it and set `verify: pass` or `verify: fail`; include the command and key result in the body. If no verify command is provided or verification is not feasible, set `verify: skip` and state why briefly.
+Request and response files are saved in `.relay/` (auto-gitignored).
 
-If the response file is missing, report failure — do not retry.
+If the response file is missing, the script reports failure — do not retry.
+
+## Timeout
+
+For complex tasks, set a longer Bash timeout (default is 2 minutes, max 10 minutes):
+
+```
+Bash(timeout: 600000)
+```
+
+## Low-Level Commands
+
+For custom workflows or manual orchestration, use `req` and `res` directly. Body can be passed as an argument or piped via stdin.
+
+```bash
+# Generate request only
+REQ=$(~/.claude/skills/relay/scripts/relay req --from claude --to codex --name slug "task body")
+
+# Then invoke codex manually
+codex exec --model gpt-5.4 -c 'model_reasoning_effort="medium"' --full-auto "Read and execute $REQ"
+
+# Read response
+cat "${REQ%.req.md}.res.md"
+```

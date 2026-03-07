@@ -1,14 +1,18 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# relay — generate relay protocol v4 request/response files
+# relay — relay protocol v4: call a peer agent, generate request/response files
 #
 # Usage:
-#   relay req --from <peer> --to <peer> --name <slug> [--session <slug>] [--] "<body>"
-#   relay res --re <id> --from <peer> --to <peer> --status <done|error> --verify <pass|fail|skip> [--session <slug>] [--] "<body>"
+#   relay call  --name <slug> [--effort <level>] [--] "<body>"   # full round-trip
+#   relay call  --session <slug> [--effort <level>] [--] "<body>"
+#   relay req   --from <peer> --to <peer> --name <slug> [--] "<body>"
+#   relay res   --re <id> --from <peer> --to <peer> --status <s> --verify <v> [--] "<body>"
 #
+# call: generate req → invoke peer → print response content (body via arg or stdin)
+# req/res: low-level file generators (body via arg or stdin)
 # One-shot IDs: YYYYMMDD-HHMM-{name}. Session turns: auto-numbered 01, 02, ...
-# Prints the created file path to stdout. Errors go to stderr.
+# Prints the created file path (req/res) or response content (call) to stdout.
 
 VERSION=4
 RELAY_DIR=".relay"
@@ -34,6 +38,18 @@ next_turn() {
   printf "%02d" "$(( count + 1 ))"
 }
 
+# Auto-detect caller and peer from the skill directory this script lives in.
+# Returns "from to" (e.g. "claude codex") or empty string if unknown.
+detect_peers() {
+  local script_dir
+  script_dir=$(cd "$(dirname "$0")/.." && pwd)
+  case "$script_dir" in
+    */.claude/* | */claude/*) echo "claude codex" ;;
+    */.codex/* | */codex/*)   echo "codex claude" ;;
+    *)                        echo "" ;;
+  esac
+}
+
 cmd_req() {
   local from="" to="" session="" name="" body=""
 
@@ -49,9 +65,16 @@ cmd_req() {
     esac
   done
 
+  if [ -z "$body" ] && [ ! -t 0 ]; then
+    local first_line
+    if IFS= read -r -t 1 first_line; then
+      body=$(printf '%s\n' "$first_line"; cat)
+    fi
+  fi
+
   [ -n "$from" ] || die "req: --from required"
   [ -n "$to" ]   || die "req: --to required"
-  [ -n "$body" ] || die "req: body required (final argument)"
+  [ -n "$body" ] || die "req: body required (argument or stdin)"
 
   if [ -n "$session" ]; then
     check_slug "req: --session" "$session"
@@ -141,12 +164,19 @@ cmd_res() {
     esac
   done
 
+  if [ -z "$body" ] && [ ! -t 0 ]; then
+    local first_line
+    if IFS= read -r -t 1 first_line; then
+      body=$(printf '%s\n' "$first_line"; cat)
+    fi
+  fi
+
   [ -n "$re" ]     || die "res: --re required"
   [ -n "$from" ]   || die "res: --from required"
   [ -n "$to" ]     || die "res: --to required"
   [ -n "$status" ] || die "res: --status required"
   [ -n "$verify" ] || die "res: --verify required"
-  [ -n "$body" ]   || die "res: body required (final argument)"
+  [ -n "$body" ]   || die "res: body required (argument or stdin)"
 
   if [ -n "$session" ]; then
     check_slug "res: --session" "$session"
@@ -188,12 +218,89 @@ EOF
   echo "$filepath"
 }
 
+cmd_call() {
+  local name="" session="" effort="medium" body="" from="" to=""
+
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --name)    name="$2"; shift 2 ;;
+      --session) session="$2"; shift 2 ;;
+      --effort)  effort="$2"; shift 2 ;;
+      --from)    from="$2"; shift 2 ;;
+      --to)      to="$2"; shift 2 ;;
+      --)        shift; body="$*"; break ;;
+      -*)        die "unknown flag: $1" ;;
+      *)         body="$*"; break ;;
+    esac
+  done
+
+  if [ -z "$body" ] && [ ! -t 0 ]; then
+    local first_line
+    if IFS= read -r -t 1 first_line; then
+      body=$(printf '%s\n' "$first_line"; cat)
+    fi
+  fi
+  [ -n "$body" ] || die "call: body required (argument or stdin)"
+
+  # Auto-detect caller and peer from install path
+  if [ -z "$from" ] || [ -z "$to" ]; then
+    local peers
+    peers=$(detect_peers)
+    if [ -n "$peers" ]; then
+      from="${from:-${peers%% *}}"
+      to="${to:-${peers##* }}"
+    else
+      [ -n "$from" ] || die "call: --from required (could not auto-detect)"
+      [ -n "$to" ]   || die "call: --to required (could not auto-detect)"
+    fi
+  fi
+
+  # Validate effort level
+  case "$effort" in
+    none|low|medium|high|xhigh) ;;
+    *) die "call: --effort must be none, low, medium, high, or xhigh" ;;
+  esac
+
+  # Build req
+  local req_args=(--from "$from" --to "$to")
+  if [ -n "$session" ]; then
+    req_args+=(--session "$session")
+  elif [ -n "$name" ]; then
+    req_args+=(--name "$name")
+  else
+    die "call: --name or --session required"
+  fi
+
+  local req_path
+  req_path=$(cmd_req "${req_args[@]}" "$body")
+  echo "relay: request  → $req_path" >&2
+
+  # Invoke peer agent
+  if [ "$to" = "codex" ]; then
+    codex exec --model gpt-5.4 -c "model_reasoning_effort=\"$effort\"" --full-auto "Read and execute $req_path" > /dev/null
+  elif [ "$to" = "claude" ]; then
+    env -u CLAUDECODE claude --model opus -p --dangerously-skip-permissions "Read and execute $req_path" > /dev/null
+  else
+    die "call: unknown peer '$to' — expected 'codex' or 'claude'"
+  fi
+
+  # Read and output response
+  local res_path="${req_path%.req.md}.res.md"
+  if [ -f "$res_path" ]; then
+    echo "relay: response → $res_path" >&2
+    cat "$res_path"
+  else
+    die "call: response file not found — peer may have failed: $res_path"
+  fi
+}
+
 # Main
-[ $# -ge 1 ] || die "usage: relay <req|res> [options] <body>"
+[ $# -ge 1 ] || die "usage: relay <call|req|res> [options] <body>"
 subcmd="$1"; shift
 
 case "$subcmd" in
-  req) cmd_req "$@" ;;
-  res) cmd_res "$@" ;;
-  *)   die "unknown subcommand: $subcmd (use 'req' or 'res')" ;;
+  call) cmd_call "$@" ;;
+  req)  cmd_req "$@" ;;
+  res)  cmd_res "$@" ;;
+  *)    die "unknown subcommand: $subcmd (use 'call', 'req', or 'res')" ;;
 esac

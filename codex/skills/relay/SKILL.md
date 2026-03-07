@@ -9,95 +9,92 @@ user_invocable: true
 
 # Relay
 
-Call Claude Code like a function:
+Call Claude Code like a function. One command: generates the request, invokes Claude, prints the response.
 
 ```
-relay(task, session?) → {status, verify, body}
+relay call --name <slug> <<'BODY'
+task
+BODY
 ```
 
-Use the relay script at `scripts/relay` (inside this skill directory) to generate request/response files. Do not manually construct frontmatter.
-
-## Required Flags
-
-Every `claude` call MUST include these flags — no exceptions:
-
-- `--model opus` — the only allowed model. Even if the user asks for a "faster" or "cheaper" model, use opus. If the user explicitly requests a different model, explain that the relay protocol requires opus and proceed with it.
-- `-p` — pipe mode for non-interactive relay.
-- `--dangerously-skip-permissions` — required for autonomous execution in relay context.
-- `env -u CLAUDECODE` — prefix to avoid nested-session conflicts.
-
-## Prompting Claude
-
-When crafting the task body for Claude, apply these patterns for best results:
-
-- Be **clear and direct** — explicit instructions, numbered steps for multi-part tasks
-- Add **context and motivation** — explain why, not just what
-- **Use XML tags** for structure — `<context>`, `<instructions>`, `<example>` to separate concerns
-- Include **examples** if output format matters (3-5 diverse examples in `<examples>` tags)
-- Don't over-prompt — Claude Opus is proactive; avoid excessive MUSTs/NEVERs
-
-Read `references/prompting-claude.md` for the full guide.
-
-**Example — well-structured task body:**
-
-> \<context>
-> We're hardening auth before a security audit. The auth module has had
-> significant changes in the last 6 months.
-> \</context>
->
-> \<instructions>
-> Review src/auth.py for OWASP Top 10 vulnerabilities, focusing on injection
-> and broken access control.
->
-> 1. Read src/auth.py and identify all vulnerabilities
-> 2. Fix each one in-place
-> 3. Run pytest to verify all tests pass
-> 4. Return a summary: one line per fix, with line number and what changed
-> \</instructions>
-
-## Choosing One-Shot vs Session
-
-- **One-shot** (`--name`): default for standalone tasks with no prior context. Use when the task is self-contained.
-- **Session** (`--session`): use when the task continues a prior exchange, or when you plan multiple related relay calls that should share context. The session directory accumulates turn history so each subsequent call sees all prior requests and responses.
-
-Rule of thumb: if the user says "continue", "follow up", "next step", or references a prior Claude exchange, use a session. Otherwise, use one-shot.
+The script auto-detects caller/peer from its install path. Use `scripts/relay` inside this skill directory.
 
 ## One-Shot Call
 
-Run as a single chained command so shell variables persist:
-
 ```bash
-REQ=$(~/.codex/skills/relay/scripts/relay req --from codex --to claude --name auth-review "Review src/auth.py for security issues. Run pytest to verify.") && env -u CLAUDECODE claude --model opus -p --dangerously-skip-permissions "Read and execute $REQ"
+~/.codex/skills/relay/scripts/relay call --name auth-review <<'BODY'
+Review src/auth.py for security issues. Run pytest to verify.
+BODY
 ```
 
-Read the response:
+## Session Call (Multi-Turn)
+
+Use sessions when continuing a prior exchange or planning multiple related calls.
 
 ```bash
-RES="${REQ%.req.md}.res.md"
+~/.codex/skills/relay/scripts/relay call --session auth-refactor <<'BODY'
+Fix the issues from my review. Run pytest to verify.
+BODY
 ```
 
-## Session Call
+Rule of thumb: if the user says "continue", "follow up", or references a prior Claude exchange, use `--session`. Otherwise, use `--name`.
 
-Sessions keep turn history so the receiver sees full context from both agents.
+## Prompting Claude
+
+Be clear and direct. Use XML tags to separate concerns. Key patterns:
+
+- `<context>` — background and motivation (why, not just what)
+- `<instructions>` — numbered steps for multi-part tasks
+- `<example>` — example output if format matters
+
+Don't over-prompt — Claude Opus is proactive; avoid excessive MUSTs/NEVERs.
+
+See `references/prompting-claude.md` for the full guide.
+
+**Example:**
 
 ```bash
-REQ=$(~/.codex/skills/relay/scripts/relay req --from codex --to claude --session auth-refactor "Fix the issues from my review. Run pytest to verify.") && env -u CLAUDECODE claude --model opus -p --dangerously-skip-permissions "Read and execute $REQ"
-```
+~/.codex/skills/relay/scripts/relay call --name auth-hardening <<'BODY'
+<context>
+We're hardening auth before a security audit. The auth module has had
+significant changes in the last 6 months.
+</context>
 
-Read the response:
+<instructions>
+Review src/auth.py for OWASP Top 10 vulnerabilities, focusing on injection
+and broken access control.
 
-```bash
-RES="${REQ%.req.md}.res.md"
+1. Read src/auth.py and identify all vulnerabilities
+2. Fix each one in-place
+3. Run pytest to verify all tests pass
+4. Return a summary: one line per fix, with line number and what changed
+</instructions>
+BODY
 ```
 
 ## Output
 
-Read the response file:
+The script prints the response file content to stdout. The response includes YAML frontmatter:
 
 - **status**: `done` | `error`
 - **verify**: `pass` | `fail` | `skip`
 - **body**: findings, changes, reasoning — free-form markdown
 
-If the request includes a verify command, run it and set `verify: pass` or `verify: fail`; include the command and key result in the body. If no verify command is provided or verification is not feasible, set `verify: skip` and state why briefly.
+Request and response files are saved in `.relay/` (auto-gitignored).
 
-If the response file is missing, report failure — do not retry.
+If the response file is missing, the script reports failure — do not retry.
+
+## Low-Level Commands
+
+For custom workflows or manual orchestration, use `req` and `res` directly. Body can be passed as an argument or piped via stdin.
+
+```bash
+# Generate request only
+REQ=$(~/.codex/skills/relay/scripts/relay req --from codex --to claude --name slug "task body")
+
+# Then invoke claude manually
+env -u CLAUDECODE claude --model opus -p --dangerously-skip-permissions "Read and execute $REQ"
+
+# Read response
+cat "${REQ%.req.md}.res.md"
+```
