@@ -106,21 +106,25 @@ npx skills add chrisliu298/relay
 **Claude Code skill：**
 
 ```bash
-mkdir -p ~/.claude/skills/relay/scripts
+mkdir -p ~/.claude/skills/relay/scripts ~/.claude/skills/relay/references
 curl -sL https://raw.githubusercontent.com/chrisliu298/relay/main/claude/skills/relay/SKILL.md \
   -o ~/.claude/skills/relay/SKILL.md
 curl -sL https://raw.githubusercontent.com/chrisliu298/relay/main/claude/skills/relay/scripts/relay \
   -o ~/.claude/skills/relay/scripts/relay && chmod +x ~/.claude/skills/relay/scripts/relay
+curl -sL https://raw.githubusercontent.com/chrisliu298/relay/main/claude/skills/relay/references/prompting-codex.md \
+  -o ~/.claude/skills/relay/references/prompting-codex.md
 ```
 
 **Codex CLI skill：**
 
 ```bash
-mkdir -p ~/.codex/skills/relay/scripts
+mkdir -p ~/.codex/skills/relay/scripts ~/.codex/skills/relay/references
 curl -sL https://raw.githubusercontent.com/chrisliu298/relay/main/codex/skills/relay/SKILL.md \
   -o ~/.codex/skills/relay/SKILL.md
 curl -sL https://raw.githubusercontent.com/chrisliu298/relay/main/codex/skills/relay/scripts/relay \
   -o ~/.codex/skills/relay/scripts/relay && chmod +x ~/.codex/skills/relay/scripts/relay
+curl -sL https://raw.githubusercontent.com/chrisliu298/relay/main/codex/skills/relay/references/prompting-claude.md \
+  -o ~/.codex/skills/relay/references/prompting-claude.md
 ```
 
 **重要：** 两个 skill 必须一起安装并同步更新，且保持同一 Relay 版本。请求/响应格式必须匹配；版本不一致会导致任一侧解析失败。
@@ -145,10 +149,10 @@ curl -sL https://raw.githubusercontent.com/chrisliu298/relay/main/codex/skills/r
 
 每个方向指定了最优模型，**请勿**自行替换，否则可能导致调用失败。
 
-| 方向 | 模型参数 | 说明 |
-|---|---|---|
-| Claude Code → Codex | `--model gpt-5.3-codex -c 'model_reasoning_effort="high"'` | 本 skill 的最优模型，请勿替换。 |
-| Codex → Claude Code | `--model claude-opus-4-6` | 本 skill 的最优模型。 |
+| 方向 | 模型参数 | 推理力度 | 说明 |
+|---|---|---|---|
+| Claude Code → Codex | `--model gpt-5.4` | 动态（`none`–`xhigh`） | Claude 根据任务选择推理力度 |
+| Codex → Claude Code | `--model opus` | 不适用 | Claude CLI 无推理力度参数 |
 
 ### 单次调用
 
@@ -157,13 +161,13 @@ curl -sL https://raw.githubusercontent.com/chrisliu298/relay/main/codex/skills/r
 **Claude Code → Codex：**
 
 ```bash
-REQ=$(~/.claude/skills/relay/scripts/relay req --from claude --to codex --name auth-review "检查 src/auth.py 的安全问题。运行 pytest 验证。") && codex exec --model gpt-5.3-codex -c 'model_reasoning_effort="high"' --full-auto "Read and execute $REQ"
+REQ=$(~/.claude/skills/relay/scripts/relay req --from claude --to codex --name auth-review "检查 src/auth.py 的安全问题。运行 pytest 验证。") && codex exec --model gpt-5.4 -c 'model_reasoning_effort="medium"' --full-auto "Read and execute $REQ"
 ```
 
 **Codex → Claude Code：**
 
 ```bash
-REQ=$(~/.codex/skills/relay/scripts/relay req --from codex --to claude --name auth-review "检查 src/auth.py 的安全问题。运行 pytest 验证。") && env -u CLAUDECODE claude --model claude-opus-4-6 -p --dangerously-skip-permissions "Read and execute $REQ"
+REQ=$(~/.codex/skills/relay/scripts/relay req --from codex --to claude --name auth-review "检查 src/auth.py 的安全问题。运行 pytest 验证。") && env -u CLAUDECODE claude --model opus -p --dangerously-skip-permissions "Read and execute $REQ"
 ```
 
 - `env -u CLAUDECODE` 防止嵌套会话错误
@@ -211,13 +215,13 @@ Format:
 **Claude Code → Codex：**
 
 ```bash
-REQ=$(~/.claude/skills/relay/scripts/relay req --from claude --to codex --session auth-refactor "修复问题并添加测试。运行 pytest 验证。") && codex exec --model gpt-5.3-codex -c 'model_reasoning_effort="high"' --full-auto "Read and execute $REQ"
+REQ=$(~/.claude/skills/relay/scripts/relay req --from claude --to codex --session auth-refactor "修复问题并添加测试。运行 pytest 验证。") && codex exec --model gpt-5.4 -c 'model_reasoning_effort="medium"' --full-auto "Read and execute $REQ"
 ```
 
 **Codex → Claude Code：**
 
 ```bash
-REQ=$(~/.codex/skills/relay/scripts/relay req --from codex --to claude --session auth-refactor "修复问题并添加测试。运行 pytest 验证。") && env -u CLAUDECODE claude --model claude-opus-4-6 -p --dangerously-skip-permissions "Read and execute $REQ"
+REQ=$(~/.codex/skills/relay/scripts/relay req --from codex --to claude --session auth-refactor "修复问题并添加测试。运行 pytest 验证。") && env -u CLAUDECODE claude --model opus -p --dangerously-skip-permissions "Read and execute $REQ"
 ```
 
 会话名必须是 slug（`[a-z0-9-]+`）。会话按顺序执行 — 同一时间只有一个写入者。
@@ -266,10 +270,14 @@ verify: pass
 relay/
 ├── claude/skills/relay/
 │   ├── SKILL.md
-│   └── scripts/relay     # 请求/响应生成脚本
+│   ├── references/
+│   │   └── prompting-codex.md   # 如何有效提示 Codex
+│   └── scripts/relay            # 请求/响应生成脚本
 └── codex/skills/relay/
     ├── SKILL.md
-    └── scripts/relay     # 相同副本
+    ├── references/
+    │   └── prompting-claude.md  # 如何有效提示 Claude
+    └── scripts/relay            # 相同副本
 ```
 
 ---

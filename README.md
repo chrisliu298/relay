@@ -106,21 +106,25 @@ Each skill bundles its own `scripts/relay` generator — no shared binary needed
 **Claude Code skill:**
 
 ```bash
-mkdir -p ~/.claude/skills/relay/scripts
+mkdir -p ~/.claude/skills/relay/scripts ~/.claude/skills/relay/references
 curl -sL https://raw.githubusercontent.com/chrisliu298/relay/main/claude/skills/relay/SKILL.md \
   -o ~/.claude/skills/relay/SKILL.md
 curl -sL https://raw.githubusercontent.com/chrisliu298/relay/main/claude/skills/relay/scripts/relay \
   -o ~/.claude/skills/relay/scripts/relay && chmod +x ~/.claude/skills/relay/scripts/relay
+curl -sL https://raw.githubusercontent.com/chrisliu298/relay/main/claude/skills/relay/references/prompting-codex.md \
+  -o ~/.claude/skills/relay/references/prompting-codex.md
 ```
 
 **Codex CLI skill:**
 
 ```bash
-mkdir -p ~/.codex/skills/relay/scripts
+mkdir -p ~/.codex/skills/relay/scripts ~/.codex/skills/relay/references
 curl -sL https://raw.githubusercontent.com/chrisliu298/relay/main/codex/skills/relay/SKILL.md \
   -o ~/.codex/skills/relay/SKILL.md
 curl -sL https://raw.githubusercontent.com/chrisliu298/relay/main/codex/skills/relay/scripts/relay \
   -o ~/.codex/skills/relay/scripts/relay && chmod +x ~/.codex/skills/relay/scripts/relay
+curl -sL https://raw.githubusercontent.com/chrisliu298/relay/main/codex/skills/relay/references/prompting-claude.md \
+  -o ~/.codex/skills/relay/references/prompting-claude.md
 ```
 
 **Important:** Install and update both skills together, and keep them on the same Relay version. Request/response formats must match; version skew can cause parse failures on either side.
@@ -145,10 +149,10 @@ Or invoke directly with `/relay`.
 
 Each direction pins a specific model. Do **not** substitute other models — they may not be available and the call will fail.
 
-| Direction | Model flag | Notes |
-|---|---|---|
-| Claude Code → Codex | `--model gpt-5.3-codex -c 'model_reasoning_effort="high"'` | Optimal model for this skill. Do not substitute other models. |
-| Codex → Claude Code | `--model claude-opus-4-6` | Optimal model for this skill. |
+| Direction | Model flag | Reasoning effort | Notes |
+|---|---|---|---|
+| Claude Code → Codex | `--model gpt-5.4` | Dynamic (`none`–`xhigh`) | Claude selects effort per task |
+| Codex → Claude Code | `--model opus` | N/A | No effort parameter in Claude CLI |
 
 ### One-Shot Call
 
@@ -157,13 +161,13 @@ The `scripts/relay` script generates a self-contained request with frontmatter, 
 **Claude Code → Codex:**
 
 ```bash
-REQ=$(~/.claude/skills/relay/scripts/relay req --from claude --to codex --name auth-review "Review src/auth.py for security issues. Run pytest to verify.") && codex exec --model gpt-5.3-codex -c 'model_reasoning_effort="high"' --full-auto "Read and execute $REQ"
+REQ=$(~/.claude/skills/relay/scripts/relay req --from claude --to codex --name auth-review "Review src/auth.py for security issues. Run pytest to verify.") && codex exec --model gpt-5.4 -c 'model_reasoning_effort="medium"' --full-auto "Read and execute $REQ"
 ```
 
 **Codex → Claude Code:**
 
 ```bash
-REQ=$(~/.codex/skills/relay/scripts/relay req --from codex --to claude --name auth-review "Review src/auth.py for security issues. Run pytest to verify.") && env -u CLAUDECODE claude --model claude-opus-4-6 -p --dangerously-skip-permissions "Read and execute $REQ"
+REQ=$(~/.codex/skills/relay/scripts/relay req --from codex --to claude --name auth-review "Review src/auth.py for security issues. Run pytest to verify.") && env -u CLAUDECODE claude --model opus -p --dangerously-skip-permissions "Read and execute $REQ"
 ```
 
 - `env -u CLAUDECODE` prevents nested-session errors
@@ -211,13 +215,13 @@ Sessions keep full turn history so the receiver reads all prior exchanges for co
 **Claude Code → Codex:**
 
 ```bash
-REQ=$(~/.claude/skills/relay/scripts/relay req --from claude --to codex --session auth-refactor "Fix the issues and add tests. Run pytest to verify.") && codex exec --model gpt-5.3-codex -c 'model_reasoning_effort="high"' --full-auto "Read and execute $REQ"
+REQ=$(~/.claude/skills/relay/scripts/relay req --from claude --to codex --session auth-refactor "Fix the issues and add tests. Run pytest to verify.") && codex exec --model gpt-5.4 -c 'model_reasoning_effort="medium"' --full-auto "Read and execute $REQ"
 ```
 
 **Codex → Claude Code:**
 
 ```bash
-REQ=$(~/.codex/skills/relay/scripts/relay req --from codex --to claude --session auth-refactor "Fix the issues and add tests. Run pytest to verify.") && env -u CLAUDECODE claude --model claude-opus-4-6 -p --dangerously-skip-permissions "Read and execute $REQ"
+REQ=$(~/.codex/skills/relay/scripts/relay req --from codex --to claude --session auth-refactor "Fix the issues and add tests. Run pytest to verify.") && env -u CLAUDECODE claude --model opus -p --dangerously-skip-permissions "Read and execute $REQ"
 ```
 
 Session names must be slugs (`[a-z0-9-]+`). Sessions are sequential — one writer at a time.
@@ -266,10 +270,14 @@ If the response file is missing after invocation, the peer failed or timed out.
 relay/
 ├── claude/skills/relay/
 │   ├── SKILL.md
-│   └── scripts/relay     # request/response generator
+│   ├── references/
+│   │   └── prompting-codex.md   # how to prompt Codex effectively
+│   └── scripts/relay            # request/response generator
 └── codex/skills/relay/
     ├── SKILL.md
-    └── scripts/relay     # identical copy
+    ├── references/
+    │   └── prompting-claude.md  # how to prompt Claude effectively
+    └── scripts/relay            # identical copy
 ```
 
 ---

@@ -19,7 +19,28 @@ Use the relay script at `scripts/relay` (inside this skill directory) to generat
 
 ## Model (REQUIRED — do not change)
 
-You MUST use exactly `--model opus` when calling `claude`. No other model is allowed. Do **not** substitute, omit, or override the model flag under any circumstances. The only permitted model is `opus`. If you use a different model, the relay will produce incorrect results.
+You MUST use exactly `--model opus` when calling `claude`. No other model is allowed. Do **not** substitute or omit the model flag under any circumstances.
+
+## Prompting Claude
+
+When crafting the task body for Claude, apply these patterns for best results:
+
+- Be **clear and direct** — explicit instructions, numbered steps for multi-part tasks
+- Add **context and motivation** — explain why, not just what
+- Use **structured sections** — headers for complex tasks; place data first, query last
+- Include **examples** if output format matters (3-5 diverse examples)
+- Don't over-prompt — Claude Opus is proactive; avoid excessive MUSTs/NEVERs
+
+Read `references/prompting-claude.md` for the full guide.
+
+**Example — well-structured task body:**
+
+> We're hardening auth before a security audit. Review src/auth.py for OWASP Top 10 vulnerabilities, focusing on injection and broken access control.
+>
+> 1. Read src/auth.py and identify all vulnerabilities
+> 2. Fix each one in-place
+> 3. Run pytest to verify all tests pass
+> 4. Return a summary: one line per fix, with line number and what changed
 
 ## One-Shot Call
 
