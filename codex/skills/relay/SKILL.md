@@ -17,9 +17,14 @@ relay(task, session?) → {status, verify, body}
 
 Use the relay script at `scripts/relay` (inside this skill directory) to generate request/response files. Do not manually construct frontmatter.
 
-## Model (REQUIRED — do not change)
+## Required Flags
 
-You MUST use exactly `--model opus` when calling `claude`. No other model is allowed. Do **not** substitute or omit the model flag under any circumstances.
+Every `claude` call MUST include these flags — no exceptions:
+
+- `--model opus` — the only allowed model. Even if the user asks for a "faster" or "cheaper" model, use opus. If the user explicitly requests a different model, explain that the relay protocol requires opus and proceed with it.
+- `-p` — pipe mode for non-interactive relay.
+- `--dangerously-skip-permissions` — required for autonomous execution in relay context.
+- `env -u CLAUDECODE` — prefix to avoid nested-session conflicts.
 
 ## Prompting Claude
 
@@ -41,6 +46,13 @@ Read `references/prompting-claude.md` for the full guide.
 > 2. Fix each one in-place
 > 3. Run pytest to verify all tests pass
 > 4. Return a summary: one line per fix, with line number and what changed
+
+## Choosing One-Shot vs Session
+
+- **One-shot** (`--name`): default for standalone tasks with no prior context. Use when the task is self-contained.
+- **Session** (`--session`): use when the task continues a prior exchange, or when you plan multiple related relay calls that should share context. The session directory accumulates turn history so each subsequent call sees all prior requests and responses.
+
+Rule of thumb: if the user says "continue", "follow up", "next step", or references a prior Claude exchange, use a session. Otherwise, use one-shot.
 
 ## One-Shot Call
 

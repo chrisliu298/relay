@@ -18,20 +18,23 @@ relay(task, session?) → {status, verify, body}
 
 Use the relay script at `scripts/relay` (inside this skill directory) to generate request/response files. Do not manually construct frontmatter.
 
-## Model (REQUIRED — do not change)
+## Required Flags
 
-You MUST use exactly `--model gpt-5.4` when calling `codex exec`. No other model is allowed. Do **not** substitute or omit the model flag under any circumstances.
+Every `codex exec` call MUST include these flags — no exceptions:
+
+- `--model gpt-5.4` — the only allowed model. Even if the user asks for a "faster" or "cheaper" model, use gpt-5.4. If the user explicitly requests a different model, explain that the relay protocol requires gpt-5.4 and proceed with it.
+- `--full-auto` — required for non-interactive relay. Without it, Codex prompts for confirmation on each tool use, breaking the automated handoff.
 
 ## Reasoning Effort
 
 Choose `-c 'model_reasoning_effort="LEVEL"'` based on the task you are delegating:
 
-| Level          | When to use                                                              |
-|----------------|--------------------------------------------------------------------------|
-| `none`         | Fast, cost/latency-sensitive tasks where the model does not need to think |
-| `low`          | Latency-sensitive tasks where a small amount of thinking helps, especially with complex instructions |
-| `medium`/`high`| Tasks that truly require stronger reasoning and can absorb the latency and cost. Choose between them based on how much the task benefits from additional reasoning. Default to `medium`. |
-| `xhigh`        | Avoid unless evals show clear benefit. Long agentic reasoning where max intelligence matters more than speed or cost |
+| Level          | When to use                                                              | Examples |
+|----------------|--------------------------------------------------------------------------|----------|
+| `none`         | Fast, cost/latency-sensitive tasks where the model does not need to think | Reformat a file, extract field values, simple find-and-replace |
+| `low`          | Latency-sensitive tasks where a small amount of thinking helps, especially with complex instructions | Triage a bug report, classify code patterns, apply a well-defined migration |
+| `medium`/`high`| Tasks that truly require stronger reasoning and can absorb the latency and cost. Choose between them based on how much the task benefits from additional reasoning. Default to `medium`. | Code review, security audit, refactoring, writing tests, fixing bugs |
+| `xhigh`        | Avoid unless evals show clear benefit. Long agentic reasoning where max intelligence matters more than speed or cost | Multi-file architectural redesign with cross-cutting concerns |
 
 Before raising effort, first try improving the prompt: add an output contract, a verification step, or completeness criteria. Better prompts at lower effort often outperform vague prompts at higher effort.
 
@@ -59,6 +62,13 @@ Read `references/prompting-codex.md` for the full guide and reasoning effort sel
 > Output: summary of changes, one per line, with file path and description.
 > Verification: run `pytest tests/test_pool.py` — all tests must pass.
 > Done means: all 4 requirements implemented, tests pass, no new lint errors.
+
+## Choosing One-Shot vs Session
+
+- **One-shot** (`--name`): default for standalone tasks with no prior context. Use when the task is self-contained.
+- **Session** (`--session`): use when the task continues a prior exchange, or when you plan multiple related relay calls that should share context. The session directory accumulates turn history so each subsequent call sees all prior requests and responses.
+
+Rule of thumb: if the user says "continue", "follow up", "next step", or references a prior Codex exchange, use a session. Otherwise, use one-shot.
 
 ## One-Shot Call
 
