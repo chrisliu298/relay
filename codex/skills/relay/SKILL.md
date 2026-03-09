@@ -88,6 +88,21 @@ Request and response files are saved in `.relay/` (auto-gitignored).
 
 If the response file is missing, the script reports failure — do not retry.
 
+## Async / Parallel
+
+Codex supports concurrency via native parallel tool calls and subagents, but **not** via shell backgrounding (`&`/`disown`/`nohup`). Background child processes do not survive after the shell command returns in Codex's sandbox.
+
+**Do not use `--bg`** — it relies on shell backgrounding which is unreliable from Codex.
+
+Recommended pattern when you have independent work alongside a relay call:
+
+1. Start any independent local work in parallel tool calls.
+2. Spawn a Codex subagent whose only job is to run the blocking relay call.
+3. Continue local work in the main agent.
+4. Wait for the relay subagent only when you need Claude's answer.
+
+**Rule: Never serialize independent work. Use subagents to run relay calls concurrently with local work.**
+
 ## Low-Level Commands
 
 For custom workflows or manual orchestration, use `req` and `res` directly. Body can be passed as an argument or piped via stdin. If auto-detection fails, pass `--from codex --to claude` explicitly to `call`.

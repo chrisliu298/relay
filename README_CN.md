@@ -23,6 +23,7 @@ BODY
 - [安装](#安装)
 - [使用方式](#使用方式)
 - [接口](#接口)
+- [异步 / 并行](#异步--并行)
 - [安全](#安全)
 - [仓库结构](#仓库结构)
 - [贡献者](#贡献者)
@@ -278,6 +279,40 @@ codex exec --model gpt-5.4 -c 'model_reasoning_effort="medium"' --full-auto "Rea
 # 响应文件路径
 echo "${REQ%.req.md}.res.md"
 ```
+
+---
+
+## 异步 / 并行
+
+默认情况下，`relay call` 会阻塞直到对端完成。当你有独立的工作需要与 relay 调用并行执行时，使用平台原生的并发机制。
+
+### Claude Code
+
+Claude Code 支持 Bash 工具的 `run_in_background: true` 和脚本的 `--bg` 标志：
+
+```bash
+# 方式 1：Bash 工具的 run_in_background（agent 原生）
+# relay 调用在后台运行，subagent 同时执行其他工作
+
+# 方式 2：--bg 标志（脚本原生）
+# 在后台 fork 对端调用，立即返回响应文件路径
+RES=$(~/.claude/skills/relay/scripts/relay call --bg --name auth-review --effort medium <<'BODY'
+检查 src/auth.py 的安全问题。
+BODY
+)
+# RES 是预期的响应文件路径 — 轮询：[ -f "$RES" ] && cat "$RES"
+```
+
+### Codex
+
+Codex 通过原生并行工具调用和子 agent 支持并发，但**不支持** shell 后台化（`&`/`disown`/`nohup` — 子进程在 shell 命令返回后不会存活）。
+
+**不要从 Codex 使用 `--bg`。** 改为生成一个 Codex 子 agent 来运行阻塞的 relay 调用，同时主 agent 继续本地工作：
+
+1. 通过并行工具调用启动独立的本地工作。
+2. 生成一个子 agent，其唯一任务是运行 relay 调用。
+3. 主 agent 继续本地工作。
+4. 仅在需要结果时等待 relay 子 agent。
 
 ---
 

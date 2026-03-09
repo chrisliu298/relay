@@ -23,6 +23,7 @@ Co-authored by Claude Code and Codex.
 - [Installation](#installation)
 - [Usage](#usage)
 - [The Interface](#the-interface)
+- [Async / Parallel](#async--parallel)
 - [Safety](#safety)
 - [Repo Structure](#repo-structure)
 - [Contributors](#contributors)
@@ -278,6 +279,40 @@ codex exec --model gpt-5.4 -c 'model_reasoning_effort="medium"' --full-auto "Rea
 # Response path
 echo "${REQ%.req.md}.res.md"
 ```
+
+---
+
+## Async / Parallel
+
+By default, `relay call` blocks until the peer finishes. When you have independent work to do alongside a relay call, use platform-native concurrency instead of serializing.
+
+### Claude Code
+
+Claude Code supports `run_in_background: true` on Bash tool calls and the `--bg` script flag:
+
+```bash
+# Option 1: run_in_background on the Bash tool (agent-native)
+# The relay call runs in the background while subagents do other work
+
+# Option 2: --bg flag (script-native)
+# Forks the peer invocation and returns the response path immediately
+RES=$(~/.claude/skills/relay/scripts/relay call --bg --name auth-review --effort medium <<'BODY'
+Review src/auth.py for security issues.
+BODY
+)
+# RES is the expected response file path — poll with: [ -f "$RES" ] && cat "$RES"
+```
+
+### Codex
+
+Codex supports concurrency via native parallel tool calls and subagents, but **not** via shell backgrounding (`&`/`disown`/`nohup` — child processes do not survive after the shell command returns in Codex's sandbox).
+
+**Do not use `--bg` from Codex.** Instead, spawn a Codex subagent to run the blocking relay call while the main agent continues local work:
+
+1. Start independent local work in parallel tool calls.
+2. Spawn a subagent whose only job is to run the relay call.
+3. Continue local work in the main agent.
+4. Wait for the relay subagent only when you need the answer.
 
 ---
 

@@ -4,7 +4,7 @@ set -euo pipefail
 # relay — relay protocol v4: call a peer agent, generate request/response files
 #
 # Usage:
-#   relay call  --name <slug> [--effort <level>] [--] "<body>"   # full round-trip
+#   relay call  --name <slug> [--effort <level>] [--bg] [--] "<body>"   # full round-trip
 #   relay call  --session <slug> [--effort <level>] [--] "<body>"
 #   relay req   --from <peer> --to <peer> --name <slug> [--] "<body>"
 #   relay res   --re <id> --from <peer> --to <peer> --status <s> --verify <v> [--] "<body>"
@@ -222,7 +222,7 @@ EOF
 }
 
 cmd_call() {
-  local name="" session="" effort="medium" body="" from="" to=""
+  local name="" session="" effort="medium" body="" from="" to="" bg=false
 
   while [ $# -gt 0 ]; do
     case "$1" in
@@ -231,6 +231,7 @@ cmd_call() {
       --effort)  effort="$2"; shift 2 ;;
       --from)    from="$2"; shift 2 ;;
       --to)      to="$2"; shift 2 ;;
+      --bg)      bg=true; shift ;;
       --)        shift; body="$*"; break ;;
       -*)        die "unknown flag: $1" ;;
       *)         body="$*"; break ;;
@@ -278,19 +279,32 @@ cmd_call() {
   local req_path
   req_path=$(cmd_req "${req_args[@]}" "$body")
   echo "relay: request  → $req_path" >&2
+  local res_path="${req_path%.req.md}.res.md"
 
-  # Invoke peer agent
+  # Build peer invocation
+  local -a peer_cmd
   if [ "$to" = "codex" ]; then
-    codex exec --model gpt-5.4 -c "model_reasoning_effort=\"$effort\"" --full-auto "Read and execute $req_path" > /dev/null
+    peer_cmd=(codex exec --model gpt-5.4 -c "model_reasoning_effort=\"$effort\"" --full-auto "Read and execute $req_path")
   elif [ "$to" = "claude" ]; then
     [ "$effort" = "medium" ] || echo "relay: warning: --effort is ignored when calling claude" >&2
-    env -u CLAUDECODE claude --model opus -p --dangerously-skip-permissions "Read and execute $req_path" > /dev/null
+    peer_cmd=(env -u CLAUDECODE claude --model opus -p --dangerously-skip-permissions "Read and execute $req_path")
   else
     die "call: unknown peer '$to' — expected 'codex' or 'claude'"
   fi
 
+  # Async: invoke in background and return response path for polling
+  if $bg; then
+    "${peer_cmd[@]}" > /dev/null &
+    disown 2>/dev/null
+    echo "relay: async    → poll for $res_path" >&2
+    echo "$res_path"
+    return 0
+  fi
+
+  # Sync: invoke and wait
+  "${peer_cmd[@]}" > /dev/null
+
   # Read and output response
-  local res_path="${req_path%.req.md}.res.md"
   if [ -f "$res_path" ]; then
     echo "relay: response → $res_path" >&2
     cat "$res_path"

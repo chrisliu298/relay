@@ -101,6 +101,24 @@ Request and response files are saved in `.relay/` (auto-gitignored).
 
 If the response file is missing, the script reports failure — do not retry.
 
+## Async / Parallel
+
+When you have independent subagent work alongside a relay call, **never block on relay while subagents wait (or vice versa)**. Run everything concurrently:
+
+1. **Background the Bash call**: Use `run_in_background: true` on the Bash tool so the relay call runs concurrently with your subagents.
+2. **Or use `--bg`**: The script forks the peer invocation and returns the response path immediately for polling.
+
+```bash
+# --bg returns immediately with the response path
+RES=$(~/.claude/skills/relay/scripts/relay call --bg --name auth-review --effort medium <<'BODY'
+Review src/auth.py for security issues.
+BODY
+)
+# RES is the expected response file path — poll with: [ -f "$RES" ] && cat "$RES"
+```
+
+**Rule: Launch relay calls and subagents concurrently. Never serialize independent work.**
+
 ## Timeout
 
 For complex tasks, set a longer Bash timeout (default is 2 minutes, max 10 minutes):
