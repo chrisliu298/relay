@@ -1,10 +1,12 @@
 ---
 name: relay
 description: |
-  Call Codex from Claude Code and return a structured result. Triggers on
-  "ask codex", "have codex", "send to codex", "get codex to", "delegate to
-  codex", "second opinion", "relay". Invoke with /relay.
-allowed-tools: Read, Write, Bash(~/.claude/skills/relay/scripts/relay:*), Bash(codex exec:*), Bash(find:*), Bash(printf:*)
+  The ONLY way to call Codex. Use this skill whenever the user wants to
+  ask, delegate to, or get a second opinion from Codex. Do NOT spawn agents
+  to run the codex CLI directly — always use this skill's relay call command.
+  Triggers on "ask codex", "have codex", "send to codex", "get codex to",
+  "delegate to codex", "second opinion", "relay". Invoke with /relay.
+allowed-tools: Read, Write, Bash(~/.claude/skills/relay/scripts/relay:*), Bash(find:*), Bash(printf:*)
 user-invocable: true
 ---
 
@@ -19,6 +21,8 @@ BODY
 ```
 
 The script auto-detects caller/peer from its install path. Use `scripts/relay` inside this skill directory.
+
+**All Codex interactions go through `relay call`.** Do not invoke `codex exec` directly, do not spawn agents to run the codex CLI, and do not pass model flags (`-m`, `--model`). The model and invocation method are hardcoded in the script.
 
 ## One-Shot Call
 
@@ -129,15 +133,14 @@ Bash(timeout: 600000)
 
 ## Low-Level Commands
 
-For custom workflows or manual orchestration, use `req` and `res` directly. Body can be passed as an argument or piped via stdin. If auto-detection fails, pass `--from claude --to codex` explicitly to `call`.
+For manual orchestration, use `req` and `res` to generate files without invoking the peer. If auto-detection fails, pass `--from claude --to codex` explicitly to `call`.
 
 ```bash
-# Generate request only
+# Generate request only (does not invoke codex)
 REQ=$(~/.claude/skills/relay/scripts/relay req --from claude --to codex --name slug "task body")
-
-# Then invoke codex manually
-codex exec --model gpt-5.4 -c 'model_reasoning_effort="medium"' --full-auto "Read and execute $REQ"
 
 # Read response (use the Read tool, not cat)
 # Response path: ${REQ%.req.md}.res.md
 ```
+
+Do not invoke `codex exec` directly — always use `relay call` for the full round-trip.
