@@ -15,7 +15,7 @@ user-invocable: true
 Call Codex like a function. One command: generates the request, invokes Codex, prints the response.
 
 ```
-relay call --name <slug> --effort <level> <<'BODY'
+relay call --name <slug> [--effort <level>] [--bg] [--timeout <sec>] [--body-only] <<'BODY'
 task
 BODY
 ```
@@ -95,15 +95,16 @@ BODY
 
 ## Output
 
-The script prints the response file content to stdout. The response includes YAML frontmatter:
+The script prints the response file content to stdout. The response has YAML frontmatter followed by free-form markdown:
 
-- **status**: `done` | `error`
-- **verify**: `pass` | `fail` | `skip`
-- **body**: findings, changes, reasoning — free-form markdown
+- **Frontmatter**: `relay`, `re`, `from`, `to`, `status` (`done` | `error`), `verify` (`pass` | `fail` | `skip`)
+- **Body**: findings, changes, reasoning — free-form markdown below the frontmatter fence
 
-Request and response files are saved in `.relay/` (auto-gitignored).
+Use `--body-only` to strip the frontmatter and get just the markdown body.
 
-If the response file is missing, the script reports failure — do not retry.
+Request and response files are saved in `.relay/` (auto-gitignored). Peer stderr is logged to a `.log` sidecar file alongside the request.
+
+If the response file is missing, the script reports failure. Do not blindly retry — inspect the request, response path, and `.log` sidecar first. If the transport failed before the peer started, a retry is safe. If the task already executed, prefer continuing in the same session after diagnosis.
 
 ## Async / Parallel
 
@@ -118,10 +119,17 @@ RES=$(~/.claude/skills/relay/scripts/relay call --bg --name auth-review --effort
 Review src/auth.py for security issues.
 BODY
 )
-# RES is the expected response file path — poll with: [ -f "$RES" ] && cat "$RES"
+# Poll for completion, then read with the Read tool
+# [ -f "$RES" ] && echo "ready"
 ```
 
 **Rule: Launch relay calls and subagents concurrently. Never serialize independent work.**
+
+## Prism / Parallax
+
+When Relay is used as the Parallax transport inside Prism, the relay call receives the **same full question and same context** as every local reviewer — only the lens (weighing posture) differs. Do not narrow the prompt for the Parallax agent.
+
+Launch the relay Bash call with `run_in_background: true` in the same parallel dispatch step as the local reviewer subagents. Do not wrap Relay itself in another subagent layer.
 
 ## Timeout
 
@@ -130,6 +138,19 @@ For complex tasks, set a longer Bash timeout (default is 2 minutes, max 10 minut
 ```
 Bash(timeout: 600000)
 ```
+
+Or use the script's `--timeout <seconds>` flag to limit the peer invocation directly (requires coreutils `timeout` or `gtimeout`).
+
+## Utility Commands
+
+`relay list` shows all protocol files:
+
+```bash
+~/.claude/skills/relay/scripts/relay list
+~/.claude/skills/relay/scripts/relay list --session auth-refactor
+```
+
+`relay --help` and `relay --version` print usage and version info.
 
 ## Low-Level Commands
 
