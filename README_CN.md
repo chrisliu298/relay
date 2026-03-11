@@ -7,7 +7,7 @@
 Relay 让一个 agent 像调用函数一样调用另一个 agent。写任务、调用对端、读结果。极简协议、自然语言通信、完全可审计。
 
 ```bash
-relay call --name <slug> --effort <level> <<'BODY'
+relay call --name <slug> [--effort <level>] [--bg] [--timeout <sec>] [--body-only] <<'BODY'
 task
 BODY
 ```
@@ -24,6 +24,8 @@ BODY
 - [使用方式](#使用方式)
 - [接口](#接口)
 - [异步 / 并行](#异步--并行)
+- [超时](#超时)
+- [实用命令](#实用命令)
 - [安全](#安全)
 - [仓库结构](#仓库结构)
 - [贡献者](#贡献者)
@@ -113,7 +115,7 @@ npx skills add chrisliu298/relay
 mkdir -p ~/.claude/skills/relay/scripts ~/.claude/skills/relay/references
 curl -sL https://raw.githubusercontent.com/chrisliu298/relay/main/claude/skills/relay/SKILL.md \
   -o ~/.claude/skills/relay/SKILL.md
-curl -sL https://raw.githubusercontent.com/chrisliu298/relay/main/claude/skills/relay/scripts/relay \
+curl -sL https://raw.githubusercontent.com/chrisliu298/relay/main/scripts/relay \
   -o ~/.claude/skills/relay/scripts/relay && chmod +x ~/.claude/skills/relay/scripts/relay
 curl -sL https://raw.githubusercontent.com/chrisliu298/relay/main/claude/skills/relay/references/prompting-codex.md \
   -o ~/.claude/skills/relay/references/prompting-codex.md
@@ -125,7 +127,7 @@ curl -sL https://raw.githubusercontent.com/chrisliu298/relay/main/claude/skills/
 mkdir -p ~/.codex/skills/relay/scripts ~/.codex/skills/relay/references
 curl -sL https://raw.githubusercontent.com/chrisliu298/relay/main/codex/skills/relay/SKILL.md \
   -o ~/.codex/skills/relay/SKILL.md
-curl -sL https://raw.githubusercontent.com/chrisliu298/relay/main/codex/skills/relay/scripts/relay \
+curl -sL https://raw.githubusercontent.com/chrisliu298/relay/main/scripts/relay \
   -o ~/.codex/skills/relay/scripts/relay && chmod +x ~/.codex/skills/relay/scripts/relay
 curl -sL https://raw.githubusercontent.com/chrisliu298/relay/main/codex/skills/relay/references/prompting-claude.md \
   -o ~/.codex/skills/relay/references/prompting-claude.md
@@ -178,14 +180,14 @@ BODY
 BODY
 ```
 
-`--name` 提供可读的短名称；脚本自动添加时间戳前缀。`--effort` 控制 Codex 的推理力度（默认 `medium`，调用 Claude 时忽略）。
+`--name` 提供可读的短名称；脚本自动添加时间戳和 PID 前缀（格式：`YYYYMMDD-HHMMSS-PID-{name}`）。`--effort` 控制 Codex 的推理力度（默认 `medium`，调用 Claude 时忽略）。
 
-生成的请求文件 `.relay/20260219-1630-auth-review.req.md`：
+生成的请求文件 `.relay/20260219-163042-12345-auth-review.req.md`：
 
 ```markdown
 ---
 relay: 4
-id: 20260219-1630-auth-review
+id: 20260219-163042-12345-auth-review
 from: claude
 to: codex
 effort: medium
@@ -194,11 +196,11 @@ effort: medium
 检查 src/auth.py 的安全问题。运行 pytest 验证。
 
 ---
-Reply: .relay/20260219-1630-auth-review.res.md
+Reply: .relay/20260219-163042-12345-auth-review.res.md
 Format:
   ---
   relay: 4
-  re: 20260219-1630-auth-review
+  re: 20260219-163042-12345-auth-review
   from: codex
   to: claude
   status: done | error
@@ -245,7 +247,7 @@ BODY
 ```markdown
 ---
 relay: 4
-re: 20260219-1630-auth-review
+re: 20260219-163042-12345-auth-review
 from: codex
 to: claude
 status: done
@@ -263,7 +265,11 @@ verify: pass
 - **verify**：`pass` | `fail` | `skip`
 - **body**：发现、变更、推理过程 — 自由格式 markdown
 
-若调用后响应文件不存在，对端失败或超时。
+使用 `--body-only` 剥离 frontmatter，仅获取 markdown 正文。
+
+请求和响应文件保存在 `.relay/`（自动加入 `.gitignore`）。对端 stderr 记录在请求旁的 `.log` 伴随文件中。
+
+若调用后响应文件不存在，对端失败或超时。请先检查请求、响应路径和 `.log` 伴随文件，再决定是否重试。
 
 ### 底层命令
 
@@ -316,6 +322,34 @@ Codex 通过原生并行工具调用和子 agent 支持并发，但**不支持**
 
 ---
 
+## 超时
+
+对于长时间运行的任务，使用 `--timeout <seconds>` 限制对端调用时长（需要 coreutils 的 `timeout` 或 `gtimeout`）：
+
+```bash
+~/.claude/skills/relay/scripts/relay call --name long-task --timeout 300 --effort high <<'BODY'
+运行完整测试套件并生成覆盖率报告。
+BODY
+```
+
+---
+
+## 实用命令
+
+```bash
+# 列出所有 relay 文件
+~/.claude/skills/relay/scripts/relay list
+
+# 列出特定会话的文件
+~/.claude/skills/relay/scripts/relay list --session auth-refactor
+
+# 显示用法和版本
+~/.claude/skills/relay/scripts/relay --help
+~/.claude/skills/relay/scripts/relay --version
+```
+
+---
+
 ## 安全
 
 - `.relay/` 已加入 `.gitignore` — 脚本自动处理
@@ -329,17 +363,20 @@ Codex 通过原生并行工具调用和子 agent 支持并发，但**不支持**
 
 ```text
 relay/
+├── scripts/relay                # 规范脚本（唯一源）
 ├── claude/skills/relay/
-│   ├── SKILL.md
+│   ├── SKILL.md                 # Claude 专用 skill（调用 Codex）
 │   ├── references/
 │   │   └── prompting-codex.md   # 如何有效提示 Codex
-│   └── scripts/relay            # 请求/响应生成脚本
+│   └── scripts/relay            # → ../../../../scripts/relay（符号链接）
 └── codex/skills/relay/
-    ├── SKILL.md
+    ├── SKILL.md                 # Codex 专用 skill（调用 Claude）
     ├── references/
     │   └── prompting-claude.md  # 如何有效提示 Claude
-    └── scripts/relay            # 相同副本
+    └── scripts/relay            # → ../../../../scripts/relay（符号链接）
 ```
+
+Bash 脚本仅存在于 `scripts/relay`。两个平台目录通过符号链接指向它，消除重复的同时保留各自独立的 SKILL.md 文件，以适配各 agent 不同的触发文本、异步模式和提示指南。
 
 ---
 

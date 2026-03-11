@@ -7,7 +7,7 @@ English | [中文](README_CN.md)
 Relay lets one agent call another like a function. Write a task, invoke the peer, read the result. Minimal protocol, natural language, fully auditable.
 
 ```bash
-relay call --name <slug> --effort <level> <<'BODY'
+relay call --name <slug> [--effort <level>] [--bg] [--timeout <sec>] [--body-only] <<'BODY'
 task
 BODY
 ```
@@ -24,6 +24,8 @@ Co-authored by Claude Code and Codex.
 - [Usage](#usage)
 - [The Interface](#the-interface)
 - [Async / Parallel](#async--parallel)
+- [Timeout](#timeout)
+- [Utility Commands](#utility-commands)
 - [Safety](#safety)
 - [Repo Structure](#repo-structure)
 - [Contributors](#contributors)
@@ -113,7 +115,7 @@ Each skill bundles its own `scripts/relay` generator — no shared binary needed
 mkdir -p ~/.claude/skills/relay/scripts ~/.claude/skills/relay/references
 curl -sL https://raw.githubusercontent.com/chrisliu298/relay/main/claude/skills/relay/SKILL.md \
   -o ~/.claude/skills/relay/SKILL.md
-curl -sL https://raw.githubusercontent.com/chrisliu298/relay/main/claude/skills/relay/scripts/relay \
+curl -sL https://raw.githubusercontent.com/chrisliu298/relay/main/scripts/relay \
   -o ~/.claude/skills/relay/scripts/relay && chmod +x ~/.claude/skills/relay/scripts/relay
 curl -sL https://raw.githubusercontent.com/chrisliu298/relay/main/claude/skills/relay/references/prompting-codex.md \
   -o ~/.claude/skills/relay/references/prompting-codex.md
@@ -125,7 +127,7 @@ curl -sL https://raw.githubusercontent.com/chrisliu298/relay/main/claude/skills/
 mkdir -p ~/.codex/skills/relay/scripts ~/.codex/skills/relay/references
 curl -sL https://raw.githubusercontent.com/chrisliu298/relay/main/codex/skills/relay/SKILL.md \
   -o ~/.codex/skills/relay/SKILL.md
-curl -sL https://raw.githubusercontent.com/chrisliu298/relay/main/codex/skills/relay/scripts/relay \
+curl -sL https://raw.githubusercontent.com/chrisliu298/relay/main/scripts/relay \
   -o ~/.codex/skills/relay/scripts/relay && chmod +x ~/.codex/skills/relay/scripts/relay
 curl -sL https://raw.githubusercontent.com/chrisliu298/relay/main/codex/skills/relay/references/prompting-claude.md \
   -o ~/.codex/skills/relay/references/prompting-claude.md
@@ -178,14 +180,14 @@ Review src/auth.py for security issues. Run pytest to verify.
 BODY
 ```
 
-The `--name` flag provides a human-readable slug; the script prepends a timestamp automatically. The `--effort` flag controls Codex's reasoning effort (defaults to `medium`, ignored when calling Claude).
+The `--name` flag provides a human-readable slug; the script prepends a timestamp and PID automatically (format: `YYYYMMDD-HHMMSS-PID-{name}`). The `--effort` flag controls Codex's reasoning effort (defaults to `medium`, ignored when calling Claude).
 
-Generated request `.relay/20260219-1630-auth-review.req.md`:
+Generated request `.relay/20260219-163042-12345-auth-review.req.md`:
 
 ```markdown
 ---
 relay: 4
-id: 20260219-1630-auth-review
+id: 20260219-163042-12345-auth-review
 from: claude
 to: codex
 effort: medium
@@ -194,11 +196,11 @@ effort: medium
 Review src/auth.py for security issues. Run pytest to verify.
 
 ---
-Reply: .relay/20260219-1630-auth-review.res.md
+Reply: .relay/20260219-163042-12345-auth-review.res.md
 Format:
   ---
   relay: 4
-  re: 20260219-1630-auth-review
+  re: 20260219-163042-12345-auth-review
   from: codex
   to: claude
   status: done | error
@@ -245,7 +247,7 @@ The `call` subcommand prints the response file content to stdout. The response f
 ```markdown
 ---
 relay: 4
-re: 20260219-1630-auth-review
+re: 20260219-163042-12345-auth-review
 from: codex
 to: claude
 status: done
@@ -263,7 +265,11 @@ All 12 tests pass after changes.
 - **verify**: `pass` | `fail` | `skip`
 - **body**: findings, changes, reasoning — free-form markdown
 
-If the response file is missing after invocation, the peer failed or timed out.
+Use `--body-only` to strip the frontmatter and get just the markdown body.
+
+Request and response files are saved in `.relay/` (auto-gitignored). Peer stderr is logged to a `.log` sidecar file alongside the request.
+
+If the response file is missing after invocation, the peer failed or timed out. Inspect the request, response path, and `.log` sidecar before retrying.
 
 ### Low-Level Commands
 
@@ -316,6 +322,34 @@ Codex supports concurrency via native parallel tool calls and subagents, but **n
 
 ---
 
+## Timeout
+
+For long-running tasks, use `--timeout <seconds>` to limit the peer invocation (requires coreutils `timeout` or `gtimeout`):
+
+```bash
+~/.claude/skills/relay/scripts/relay call --name long-task --timeout 300 --effort high <<'BODY'
+Run the full test suite and generate coverage report.
+BODY
+```
+
+---
+
+## Utility Commands
+
+```bash
+# List all relay files
+~/.claude/skills/relay/scripts/relay list
+
+# List files for a specific session
+~/.claude/skills/relay/scripts/relay list --session auth-refactor
+
+# Show usage and version
+~/.claude/skills/relay/scripts/relay --help
+~/.claude/skills/relay/scripts/relay --version
+```
+
+---
+
 ## Safety
 
 - `.relay/` is gitignored — the script handles this automatically
@@ -329,17 +363,20 @@ Codex supports concurrency via native parallel tool calls and subagents, but **n
 
 ```text
 relay/
+├── scripts/relay                # canonical script (single source of truth)
 ├── claude/skills/relay/
-│   ├── SKILL.md
+│   ├── SKILL.md                 # Claude-specific skill (calls Codex)
 │   ├── references/
 │   │   └── prompting-codex.md   # how to prompt Codex effectively
-│   └── scripts/relay            # request/response generator
+│   └── scripts/relay            # → ../../../../scripts/relay (symlink)
 └── codex/skills/relay/
-    ├── SKILL.md
+    ├── SKILL.md                 # Codex-specific skill (calls Claude)
     ├── references/
     │   └── prompting-claude.md  # how to prompt Claude effectively
-    └── scripts/relay            # identical copy
+    └── scripts/relay            # → ../../../../scripts/relay (symlink)
 ```
+
+The bash script lives once at `scripts/relay`. Both platform directories symlink to it, eliminating duplication while keeping separate SKILL.md files for each agent's distinct trigger text, async patterns, and prompting guidance.
 
 ---
 
