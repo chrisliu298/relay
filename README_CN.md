@@ -25,6 +25,7 @@ BODY
 - [接口](#接口)
 - [异步 / 并行](#异步--并行)
 - [实用命令](#实用命令)
+- [Prism 集成](#prism-集成)
 - [安全](#安全)
 - [仓库结构](#仓库结构)
 - [贡献者](#贡献者)
@@ -38,6 +39,7 @@ BODY
 - **任务委派：** 一个 agent 把任务交给另一个执行
 - **第二意见：** 交叉审查，降低同模型盲区
 - **跨模型流水线：** 一个实现，一个验证
+- **驱动多 agent 审议** — Relay 是 [Prism](https://github.com/chrisliu298/prism) Parallax 层的传输层
 
 ### 为什么不直接用 subagent
 
@@ -334,6 +336,22 @@ Codex 通过原生并行工具调用和子 agent 支持并发，但**不支持**
 ~/.claude/skills/relay/scripts/relay --help
 ~/.claude/skills/relay/scripts/relay --version
 ```
+
+---
+
+## Prism 集成
+
+[Prism](https://github.com/chrisliu298/prism) 是一个多 agent 审议 skill，将同一问题发送给多个独立 agent，每个 agent 从不同的分析视角作答。Relay 为 Prism 的 **Parallax** 层提供传输 — 即跨模型 agent，提供模型多样性。
+
+当 Prism 从 Claude Code 运行时，Parallax 通过 Relay 调用 Codex。当 Prism 从 Codex 运行时，Parallax 通过 Relay 调用 Claude Code。Parallax agent 接收与所有本地 reviewer 完全相同的问题和上下文 — 唯一的区别是分析视角。
+
+```bash
+# 安装两个 skill 以获得完整的 Prism 体验
+npx skills add chrisliu298/prism
+npx skills add chrisliu298/relay
+```
+
+如果未安装 Relay，Prism 会退回到同模型对抗性 agent — 功能可用但缺少模型多样性。
 
 ---
 

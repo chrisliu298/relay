@@ -25,6 +25,7 @@ Co-authored by Claude Code and Codex.
 - [The Interface](#the-interface)
 - [Async / Parallel](#async--parallel)
 - [Utility Commands](#utility-commands)
+- [Prism Integration](#prism-integration)
 - [Safety](#safety)
 - [Repo Structure](#repo-structure)
 - [Contributors](#contributors)
@@ -38,6 +39,7 @@ When you run one agent, you get one model's strengths. Relay lets you compose bo
 - **Delegate tasks** from one agent to the other without copy-paste
 - **Get second opinions** by having one agent review the other's work
 - **Run cross-model workflows** (implement with one, verify with the other)
+- **Power multi-agent deliberation** — Relay is the transport layer for [Prism](https://github.com/chrisliu298/prism)'s Parallax tier
 
 ### Why not subagents?
 
@@ -334,6 +336,22 @@ Codex supports concurrency via native parallel tool calls and subagents, but **n
 ~/.claude/skills/relay/scripts/relay --help
 ~/.claude/skills/relay/scripts/relay --version
 ```
+
+---
+
+## Prism Integration
+
+[Prism](https://github.com/chrisliu298/prism) is a multi-agent deliberation skill that sends the same question to multiple independent agents, each answering from a different analytical lens. Relay powers Prism's **Parallax** tier — the cross-model agent that provides model diversity.
+
+When Prism runs from Claude Code, Parallax calls Codex via Relay. When Prism runs from Codex, Parallax calls Claude Code. The Parallax agent receives the same full question and context as every local reviewer — only the lens differs.
+
+```bash
+# Install both for the full Prism experience
+npx skills add chrisliu298/prism
+npx skills add chrisliu298/relay
+```
+
+Without Relay installed, Prism falls back to a same-model adversarial agent — functional but with reduced diversity.
 
 ---
 
