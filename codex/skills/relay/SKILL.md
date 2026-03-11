@@ -4,7 +4,6 @@ description: |
   Call Claude Code from Codex and return a structured result. Triggers on
   "ask claude", "have claude", "send to claude", "get claude to",
   "delegate to claude", "second opinion", "relay". Invoke with /relay.
-user_invocable: true
 ---
 
 # Relay
