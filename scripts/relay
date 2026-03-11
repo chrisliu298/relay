@@ -1,0 +1,475 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# relay — relay protocol v4: call a peer agent, generate request/response files
+#
+# Usage:
+#   relay call  --name <slug> [--effort <level>] [--bg] [--timeout <sec>] [--body-only] [--] "<body>"
+#   relay call  --session <slug> [--effort <level>] [--timeout <sec>] [--body-only] [--] "<body>"
+#   relay req   --from <peer> --to <peer> --name <slug> [--] "<body>"
+#   relay res   --re <id> --from <peer> --to <peer> --status <s> --verify <v> [--] "<body>"
+#   relay list  [--session <slug>]
+#   relay --help | --version
+#
+# call: generate req → invoke peer → print response content (body via arg or stdin)
+# req/res: low-level file generators (body via arg or stdin)
+# list: show all relay files
+# One-shot IDs: YYYYMMDD-HHMMSS-PID-{name}. Session turns: auto-numbered 01, 02, ...
+# Prints the created file path (req/res) or response content (call) to stdout.
+
+VERSION=4
+
+die() { echo "relay: $*" >&2; exit 1; }
+
+need_arg() { [ "$1" -ge 2 ] || die "$2 requires a value"; }
+
+check_slug() {
+  case "$2" in
+    *[!a-z0-9-]*) die "$1 must be a slug [a-z0-9-]+" ;;
+  esac
+}
+
+# Resolve a stable root directory: git root or absolute cwd
+resolve_root() {
+  git rev-parse --show-toplevel 2>/dev/null || pwd -P
+}
+
+ROOT=$(resolve_root)
+RELAY_DIR="$ROOT/.relay"
+
+ensure_relay_dir() {
+  mkdir -p "$RELAY_DIR"
+  local gitignore="$ROOT/.gitignore"
+  grep -qxF '.relay/' "$gitignore" 2>/dev/null || echo '.relay/' >> "$gitignore"
+}
+
+# Allocate the next session turn number atomically.
+# Uses a lockdir to serialize concurrent writers.
+next_turn() {
+  local session_dir="$RELAY_DIR/$1"
+  mkdir -p "$session_dir"
+  local lockdir="$session_dir/.turn-lock"
+
+  local attempts=0
+  while ! mkdir "$lockdir" 2>/dev/null; do
+    attempts=$(( attempts + 1 ))
+    [ "$attempts" -lt 50 ] || die "next_turn: could not acquire lock after 5s (stale? remove $lockdir)"
+    sleep 0.1
+  done
+
+  local count turn
+  count=$(find "$session_dir" -maxdepth 1 -name '*.req.md' 2>/dev/null | wc -l | tr -d ' ')
+  turn=$(printf "%02d" "$(( count + 1 ))")
+  : > "$session_dir/$turn.req.md"
+  rmdir "$lockdir" 2>/dev/null
+  printf "%s" "$turn"
+}
+
+# Read body from stdin when no argument body was provided
+read_stdin_body() {
+  if [ ! -t 0 ]; then
+    cat
+  fi
+}
+
+# Write content to a file atomically (temp + mv)
+atomic_write() {
+  local target="$1"
+  local tmpfile
+  tmpfile=$(mktemp "${target}.tmp.XXXXXX")
+  cat > "$tmpfile"
+  mv "$tmpfile" "$target"
+}
+
+# Strip YAML frontmatter (first --- ... --- block) from stdin
+strip_frontmatter() {
+  awk '/^---$/ && !p { n++; next } n >= 2 { p=1 } p'
+}
+
+# Auto-detect caller and peer from the skill directory this script lives in.
+# Returns "from to" (e.g. "claude codex") or empty string if unknown.
+detect_peers() {
+  local script_dir
+  script_dir=$(cd "$(dirname "$0")/.." && pwd)
+  case "$script_dir" in
+    */.claude/skills/* | */claude/skills/*) echo "claude codex" ;;
+    */.codex/skills/* | */codex/skills/*)   echo "codex claude" ;;
+    *)                                      echo "" ;;
+  esac
+}
+
+cmd_req() {
+  local from="" to="" session="" name="" effort="" body=""
+
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --from)    need_arg $# "$1"; from="$2"; shift 2 ;;
+      --to)      need_arg $# "$1"; to="$2"; shift 2 ;;
+      --session) need_arg $# "$1"; session="$2"; shift 2 ;;
+      --name)    need_arg $# "$1"; name="$2"; shift 2 ;;
+      --effort)  need_arg $# "$1"; effort="$2"; shift 2 ;;
+      --)        shift; body="$*"; break ;;
+      -*)        die "req: unknown flag: $1" ;;
+      *)         body="$*"; break ;;
+    esac
+  done
+
+  if [ -z "$body" ]; then
+    body=$(read_stdin_body)
+  fi
+
+  [ -n "$from" ] || die "req: --from required"
+  [ -n "$to" ]   || die "req: --to required"
+  [ -n "$body" ] || die "req: body required (argument or stdin)"
+
+  if [ -n "$session" ]; then
+    check_slug "req: --session" "$session"
+  fi
+
+  ensure_relay_dir
+
+  # Build effort line (omit for claude — no reasoning effort param)
+  local effort_line=""
+  if [ -n "$effort" ] && [ "$to" != "claude" ]; then
+    effort_line=$'\n'"effort: $effort"
+  fi
+
+  local filepath id
+  if [ -n "$session" ]; then
+    local turn
+    turn=$(next_turn "$session")
+    id="$turn"
+    filepath="$RELAY_DIR/$session/$turn.req.md"
+
+    cat <<EOF | atomic_write "$filepath"
+---
+relay: $VERSION
+id: $id
+from: $from
+to: $to$effort_line
+---
+
+$body
+
+---
+Reply: $RELAY_DIR/$session/$turn.res.md
+Context: read all .md files in $RELAY_DIR/$session/ in order first
+Format:
+  ---
+  relay: $VERSION
+  re: $id
+  from: $to
+  to: $from
+  status: done | error
+  verify: pass | fail | skip
+  ---
+  {your response}
+EOF
+  else
+    [ -n "$name" ] || die "req: --name required for one-shot calls"
+    check_slug "req: --name" "$name"
+    id="$(date +%Y%m%d-%H%M%S)-$$-$name"
+    filepath="$RELAY_DIR/$id.req.md"
+
+    cat <<EOF | atomic_write "$filepath"
+---
+relay: $VERSION
+id: $id
+from: $from
+to: $to$effort_line
+---
+
+$body
+
+---
+Reply: $RELAY_DIR/$id.res.md
+Format:
+  ---
+  relay: $VERSION
+  re: $id
+  from: $to
+  to: $from
+  status: done | error
+  verify: pass | fail | skip
+  ---
+  {your response}
+EOF
+  fi
+
+  echo "$filepath"
+}
+
+cmd_res() {
+  local re="" from="" to="" status="" verify="" session="" body=""
+
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --re)      need_arg $# "$1"; re="$2"; shift 2 ;;
+      --from)    need_arg $# "$1"; from="$2"; shift 2 ;;
+      --to)      need_arg $# "$1"; to="$2"; shift 2 ;;
+      --status)  need_arg $# "$1"; status="$2"; shift 2 ;;
+      --verify)  need_arg $# "$1"; verify="$2"; shift 2 ;;
+      --session) need_arg $# "$1"; session="$2"; shift 2 ;;
+      --)        shift; body="$*"; break ;;
+      -*)        die "res: unknown flag: $1" ;;
+      *)         body="$*"; break ;;
+    esac
+  done
+
+  if [ -z "$body" ]; then
+    body=$(read_stdin_body)
+  fi
+
+  [ -n "$re" ]     || die "res: --re required"
+  [ -n "$from" ]   || die "res: --from required"
+  [ -n "$to" ]     || die "res: --to required"
+  [ -n "$status" ] || die "res: --status required"
+  [ -n "$verify" ] || die "res: --verify required"
+  [ -n "$body" ]   || die "res: body required (argument or stdin)"
+
+  # Validate --re against path traversal
+  case "$re" in
+    *..* | */*) die "res: --re contains invalid characters (no '..' or '/')" ;;
+  esac
+
+  if [ -n "$session" ]; then
+    check_slug "res: --session" "$session"
+  fi
+
+  case "$status" in
+    done|error) ;;
+    *) die "res: --status must be 'done' or 'error'" ;;
+  esac
+
+  case "$verify" in
+    pass|fail|skip) ;;
+    *) die "res: --verify must be 'pass', 'fail', or 'skip'" ;;
+  esac
+
+  ensure_relay_dir
+
+  local filepath
+  if [ -n "$session" ]; then
+    mkdir -p "$RELAY_DIR/$session"
+    filepath="$RELAY_DIR/$session/$re.res.md"
+  else
+    filepath="$RELAY_DIR/$re.res.md"
+  fi
+
+  cat <<EOF | atomic_write "$filepath"
+---
+relay: $VERSION
+re: $re
+from: $from
+to: $to
+status: $status
+verify: $verify
+---
+
+$body
+EOF
+
+  echo "$filepath"
+}
+
+cmd_call() {
+  local name="" session="" effort="medium" body="" from="" to="" bg=false
+  local body_only=false call_timeout=""
+
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --name)      need_arg $# "$1"; name="$2"; shift 2 ;;
+      --session)   need_arg $# "$1"; session="$2"; shift 2 ;;
+      --effort)    need_arg $# "$1"; effort="$2"; shift 2 ;;
+      --from)      need_arg $# "$1"; from="$2"; shift 2 ;;
+      --to)        need_arg $# "$1"; to="$2"; shift 2 ;;
+      --timeout)   need_arg $# "$1"; call_timeout="$2"; shift 2 ;;
+      --bg)        bg=true; shift ;;
+      --body-only) body_only=true; shift ;;
+      --)          shift; body="$*"; break ;;
+      -*)          die "call: unknown flag: $1" ;;
+      *)           body="$*"; break ;;
+    esac
+  done
+
+  if [ -z "$body" ]; then
+    body=$(read_stdin_body)
+  fi
+  [ -n "$body" ] || die "call: body required (argument or stdin)"
+
+  # Auto-detect caller and peer from install path
+  if [ -z "$from" ] || [ -z "$to" ]; then
+    local peers
+    peers=$(detect_peers)
+    if [ -n "$peers" ]; then
+      from="${from:-${peers%% *}}"
+      to="${to:-${peers##* }}"
+    else
+      [ -n "$from" ] || die "call: --from required (could not auto-detect)"
+      [ -n "$to" ]   || die "call: --to required (could not auto-detect)"
+    fi
+  fi
+
+  # Reject --bg from Codex (shell backgrounding is unreliable in Codex sandbox)
+  if $bg && [ "$from" = "codex" ]; then
+    die "call: --bg is not supported from Codex (use a subagent for async relay calls)"
+  fi
+
+  # Validate effort level
+  case "$effort" in
+    none|low|medium|high|xhigh) ;;
+    *) die "call: --effort must be none, low, medium, high, or xhigh" ;;
+  esac
+
+  # Build req (effort is omitted from frontmatter when calling claude)
+  local req_args=(--from "$from" --to "$to")
+  if [ "$to" != "claude" ]; then
+    req_args+=(--effort "$effort")
+  fi
+  if [ -n "$session" ]; then
+    req_args+=(--session "$session")
+  elif [ -n "$name" ]; then
+    req_args+=(--name "$name")
+  else
+    die "call: --name or --session required"
+  fi
+
+  local req_path
+  req_path=$(cmd_req "${req_args[@]}" "$body")
+  echo "relay: request  → $req_path" >&2
+  local res_path="${req_path%.req.md}.res.md"
+  local log_path="${req_path%.req.md}.log"
+
+  # Preflight: check peer binary exists
+  local peer_bin
+  if [ "$to" = "codex" ]; then
+    peer_bin="codex"
+  elif [ "$to" = "claude" ]; then
+    peer_bin="claude"
+  else
+    die "call: unknown peer '$to' — expected 'codex' or 'claude'"
+  fi
+  command -v "$peer_bin" >/dev/null 2>&1 || die "call: '$peer_bin' not found in PATH"
+
+  # Build peer invocation
+  local -a peer_cmd
+  if [ "$to" = "codex" ]; then
+    peer_cmd=(codex exec --model gpt-5.4 -c "model_reasoning_effort=\"$effort\"" --full-auto "Read and execute $req_path")
+  elif [ "$to" = "claude" ]; then
+    [ "$effort" = "medium" ] || echo "relay: note: --effort is informational when calling claude" >&2
+    peer_cmd=(env -u CLAUDECODE claude --model opus -p --dangerously-skip-permissions "Read and execute $req_path")
+  fi
+
+  # Apply timeout if requested
+  if [ -n "$call_timeout" ]; then
+    if command -v timeout >/dev/null 2>&1; then
+      peer_cmd=(timeout "$call_timeout" "${peer_cmd[@]}")
+    elif command -v gtimeout >/dev/null 2>&1; then
+      peer_cmd=(gtimeout "$call_timeout" "${peer_cmd[@]}")
+    else
+      echo "relay: warning: --timeout requires 'timeout' or 'gtimeout' (coreutils); ignoring" >&2
+    fi
+  fi
+
+  # Async: invoke in background and return response path for polling
+  if $bg; then
+    "${peer_cmd[@]}" </dev/null >/dev/null 2>"$log_path" &
+    disown 2>/dev/null
+    echo "relay: async    → poll for $res_path" >&2
+    echo "$res_path"
+    return 0
+  fi
+
+  # Sync: invoke and capture exit status (don't let set -e abort before checking response)
+  local peer_exit=0
+  "${peer_cmd[@]}" >/dev/null 2>"$log_path" || peer_exit=$?
+
+  # Read and output response (check file even if peer exited non-zero)
+  if [ -f "$res_path" ]; then
+    echo "relay: response → $res_path" >&2
+    if [ "$peer_exit" -ne 0 ]; then
+      echo "relay: warning: peer exited $peer_exit but response file exists (see $log_path)" >&2
+    fi
+    if $body_only; then
+      strip_frontmatter < "$res_path"
+    else
+      cat "$res_path"
+    fi
+  else
+    echo "relay: peer log  → $log_path" >&2
+    die "call: response file not found — peer exited $peer_exit: $res_path"
+  fi
+}
+
+cmd_list() {
+  local session=""
+
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --session) need_arg $# "$1"; session="$2"; shift 2 ;;
+      -*)        die "list: unknown flag: $1" ;;
+      *)         die "list: unexpected argument: $1" ;;
+    esac
+  done
+
+  if [ ! -d "$RELAY_DIR" ]; then
+    echo "relay: no .relay directory found" >&2
+    return 0
+  fi
+
+  local search_dir="$RELAY_DIR"
+  if [ -n "$session" ]; then
+    search_dir="$RELAY_DIR/$session"
+    [ -d "$search_dir" ] || die "list: session '$session' not found"
+  fi
+
+  find "$search_dir" \( -name '*.req.md' -o -name '*.res.md' -o -name '*.log' \) | sort
+}
+
+cmd_help() {
+  cat <<'USAGE'
+relay — relay protocol v4: call a peer agent, generate request/response files
+
+Usage:
+  relay call  --name <slug> [options] [--] "<body>"
+  relay call  --session <slug> [options] [--] "<body>"
+  relay req   --from <peer> --to <peer> --name <slug> [--] "<body>"
+  relay res   --re <id> --from <peer> --to <peer> --status <s> --verify <v> [--] "<body>"
+  relay list  [--session <slug>]
+  relay --help | --version
+
+Subcommands:
+  call   Generate req, invoke peer, print response
+  req    Generate a request file (no invocation)
+  res    Generate a response file
+  list   List all relay files
+
+Call options:
+  --name <slug>      One-shot call identifier
+  --session <slug>   Session identifier for multi-turn calls
+  --effort <level>   Reasoning effort: none, low, medium (default), high, xhigh
+  --bg               Run peer in background (returns response path for polling)
+  --body-only        Strip frontmatter from response output
+  --timeout <sec>    Timeout for peer invocation (requires coreutils)
+  --from <peer>      Override caller detection (claude or codex)
+  --to <peer>        Override peer detection (claude or codex)
+USAGE
+}
+
+# Main
+[ $# -ge 1 ] || { cmd_help; exit 1; }
+
+case "$1" in
+  --help|-h)    cmd_help; exit 0 ;;
+  --version|-V) echo "relay v$VERSION"; exit 0 ;;
+esac
+
+subcmd="$1"; shift
+
+case "$subcmd" in
+  call) cmd_call "$@" ;;
+  req)  cmd_req "$@" ;;
+  res)  cmd_res "$@" ;;
+  list) cmd_list "$@" ;;
+  *)    die "unknown subcommand: $subcmd (use 'call', 'req', 'res', or 'list')" ;;
+esac
