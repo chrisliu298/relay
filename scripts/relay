@@ -4,8 +4,8 @@ set -euo pipefail
 # relay — relay protocol v4: call a peer agent, generate request/response files
 #
 # Usage:
-#   relay call  --name <slug> [--effort <level>] [--bg] [--timeout <sec>] [--body-only] [--] "<body>"
-#   relay call  --session <slug> [--effort <level>] [--timeout <sec>] [--body-only] [--] "<body>"
+#   relay call  --name <slug> [--effort <level>] [--bg] [--body-only] [--] "<body>"
+#   relay call  --session <slug> [--effort <level>] [--body-only] [--] "<body>"
 #   relay req   --from <peer> --to <peer> --name <slug> [--] "<body>"
 #   relay res   --re <id> --from <peer> --to <peer> --status <s> --verify <v> [--] "<body>"
 #   relay list  [--session <slug>]
@@ -274,7 +274,7 @@ EOF
 
 cmd_call() {
   local name="" session="" effort="medium" body="" from="" to="" bg=false
-  local body_only=false call_timeout=""
+  local body_only=false
 
   while [ $# -gt 0 ]; do
     case "$1" in
@@ -283,7 +283,6 @@ cmd_call() {
       --effort)    need_arg $# "$1"; effort="$2"; shift 2 ;;
       --from)      need_arg $# "$1"; from="$2"; shift 2 ;;
       --to)        need_arg $# "$1"; to="$2"; shift 2 ;;
-      --timeout)   need_arg $# "$1"; call_timeout="$2"; shift 2 ;;
       --bg)        bg=true; shift ;;
       --body-only) body_only=true; shift ;;
       --)          shift; body="$*"; break ;;
@@ -360,17 +359,6 @@ cmd_call() {
     peer_cmd=(env -u CLAUDECODE claude --model opus -p --dangerously-skip-permissions "Read and execute $req_path")
   fi
 
-  # Apply timeout if requested
-  if [ -n "$call_timeout" ]; then
-    if command -v timeout >/dev/null 2>&1; then
-      peer_cmd=(timeout "$call_timeout" "${peer_cmd[@]}")
-    elif command -v gtimeout >/dev/null 2>&1; then
-      peer_cmd=(gtimeout "$call_timeout" "${peer_cmd[@]}")
-    else
-      echo "relay: warning: --timeout requires 'timeout' or 'gtimeout' (coreutils); ignoring" >&2
-    fi
-  fi
-
   # Async: invoke in background and return response path for polling
   if $bg; then
     "${peer_cmd[@]}" </dev/null >/dev/null 2>"$log_path" &
@@ -431,8 +419,8 @@ cmd_help() {
 relay — relay protocol v4: call a peer agent, generate request/response files
 
 Usage:
-  relay call  --name <slug> [options] [--] "<body>"
-  relay call  --session <slug> [options] [--] "<body>"
+  relay call  --name <slug> [--effort <level>] [--bg] [--body-only] [--] "<body>"
+  relay call  --session <slug> [--effort <level>] [--body-only] [--] "<body>"
   relay req   --from <peer> --to <peer> --name <slug> [--] "<body>"
   relay res   --re <id> --from <peer> --to <peer> --status <s> --verify <v> [--] "<body>"
   relay list  [--session <slug>]
@@ -450,7 +438,6 @@ Call options:
   --effort <level>   Reasoning effort: none, low, medium (default), high, xhigh
   --bg               Run peer in background (returns response path for polling)
   --body-only        Strip frontmatter from response output
-  --timeout <sec>    Timeout for peer invocation (requires coreutils)
   --from <peer>      Override caller detection (claude or codex)
   --to <peer>        Override peer detection (claude or codex)
 USAGE

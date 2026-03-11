@@ -15,7 +15,7 @@ user-invocable: true
 Call Codex like a function. One command: generates the request, invokes Codex, prints the response.
 
 ```
-relay call --name <slug> [--effort <level>] [--bg] [--timeout <sec>] [--body-only] <<'BODY'
+relay call --name <slug> [--effort <level>] [--bg] [--body-only] <<'BODY'
 task
 BODY
 ```
@@ -138,8 +138,6 @@ For complex tasks, set a longer Bash timeout (default is 2 minutes, max 10 minut
 ```
 Bash(timeout: 600000)
 ```
-
-Or use the script's `--timeout <seconds>` flag to limit the peer invocation directly (requires coreutils `timeout` or `gtimeout`).
 
 ## Utility Commands
 

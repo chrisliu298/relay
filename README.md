@@ -7,7 +7,7 @@ English | [中文](README_CN.md)
 Relay lets one agent call another like a function. Write a task, invoke the peer, read the result. Minimal protocol, natural language, fully auditable.
 
 ```bash
-relay call --name <slug> [--effort <level>] [--bg] [--timeout <sec>] [--body-only] <<'BODY'
+relay call --name <slug> [--effort <level>] [--bg] [--body-only] <<'BODY'
 task
 BODY
 ```
@@ -24,7 +24,6 @@ Co-authored by Claude Code and Codex.
 - [Usage](#usage)
 - [The Interface](#the-interface)
 - [Async / Parallel](#async--parallel)
-- [Timeout](#timeout)
 - [Utility Commands](#utility-commands)
 - [Safety](#safety)
 - [Repo Structure](#repo-structure)
@@ -319,18 +318,6 @@ Codex supports concurrency via native parallel tool calls and subagents, but **n
 2. Spawn a subagent whose only job is to run the relay call.
 3. Continue local work in the main agent.
 4. Wait for the relay subagent only when you need the answer.
-
----
-
-## Timeout
-
-For long-running tasks, use `--timeout <seconds>` to limit the peer invocation (requires coreutils `timeout` or `gtimeout`):
-
-```bash
-~/.claude/skills/relay/scripts/relay call --name long-task --timeout 300 --effort high <<'BODY'
-Run the full test suite and generate coverage report.
-BODY
-```
 
 ---
 

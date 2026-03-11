@@ -7,7 +7,7 @@
 Relay 让一个 agent 像调用函数一样调用另一个 agent。写任务、调用对端、读结果。极简协议、自然语言通信、完全可审计。
 
 ```bash
-relay call --name <slug> [--effort <level>] [--bg] [--timeout <sec>] [--body-only] <<'BODY'
+relay call --name <slug> [--effort <level>] [--bg] [--body-only] <<'BODY'
 task
 BODY
 ```
@@ -24,7 +24,6 @@ BODY
 - [使用方式](#使用方式)
 - [接口](#接口)
 - [异步 / 并行](#异步--并行)
-- [超时](#超时)
 - [实用命令](#实用命令)
 - [安全](#安全)
 - [仓库结构](#仓库结构)
@@ -319,18 +318,6 @@ Codex 通过原生并行工具调用和子 agent 支持并发，但**不支持**
 2. 生成一个子 agent，其唯一任务是运行 relay 调用。
 3. 主 agent 继续本地工作。
 4. 仅在需要结果时等待 relay 子 agent。
-
----
-
-## 超时
-
-对于长时间运行的任务，使用 `--timeout <seconds>` 限制对端调用时长（需要 coreutils 的 `timeout` 或 `gtimeout`）：
-
-```bash
-~/.claude/skills/relay/scripts/relay call --name long-task --timeout 300 --effort high <<'BODY'
-运行完整测试套件并生成覆盖率报告。
-BODY
-```
 
 ---
 

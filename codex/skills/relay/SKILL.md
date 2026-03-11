@@ -125,10 +125,6 @@ When Relay is used as the Parallax transport inside Prism, the relay call receiv
 
 For Codex Prism runs, spawn a Codex subagent whose only job is to run the blocking relay call. Launch it concurrently with the local reviewer subagents via parallel tool calls.
 
-## Timeout
-
-For long-running tasks, use the script's `--timeout <seconds>` flag to limit the peer invocation (requires coreutils `timeout` or `gtimeout`).
-
 ## Utility Commands
 
 `relay list` shows all protocol files:
