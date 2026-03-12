@@ -60,6 +60,8 @@ Before raising effort, improve the prompt first — add output contracts, verifi
 
 ## Prompting Claude
 
+**Before composing the prompt body, read `~/.codex/skills/relay/references/prompting-claude.md`.** This is not optional — the guide contains model-specific patterns that materially affect output quality.
+
 Be clear and direct. Use XML tags to separate concerns. Key patterns:
 
 - `<context>` — background and motivation (why, not just what)
@@ -67,8 +69,6 @@ Be clear and direct. Use XML tags to separate concerns. Key patterns:
 - `<example>` — example output if format matters
 
 Don't over-prompt — Claude Opus is proactive; avoid excessive MUSTs/NEVERs.
-
-See `~/.codex/skills/relay/references/prompting-claude.md` for the full guide.
 
 **Example:**
 

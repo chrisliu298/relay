@@ -60,13 +60,13 @@ Before raising effort, improve the prompt first — add output contracts, verifi
 
 ## Prompting Codex
 
+**Before composing the prompt body, read `~/.claude/skills/relay/references/prompting-codex.md`.** This is not optional — the guide contains model-specific patterns that materially affect output quality.
+
 Use XML tags for structure. Key patterns:
 
 - `<output_contract>` — exact format and structure expected
 - `<completeness_contract>` — what "done" means explicitly
 - `<verification_loop>` — check correctness before finalizing
-
-See `~/.claude/skills/relay/references/prompting-codex.md` for the full guide.
 
 **Example:**
 
