@@ -1,6 +1,6 @@
 # Relay
 
-**A skill for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) and [Codex CLI](https://github.com/openai/codex) that teaches them to talk to each other.**
+**A skill for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) and [Codex](https://github.com/openai/codex) that teaches them to talk to each other.**
 
 > *A baton changes hands, the race continues. One agent writes the task, another picks it up and runs.*
 
@@ -9,7 +9,13 @@ English | [中文](README_CN.md)
 Relay lets one agent call another like a function. Write a task, invoke the peer, read the result. Minimal protocol, natural language, fully auditable.
 
 ```bash
+# Claude Code → Codex
 relay call --name <slug> [--effort <level>] [--bg] [--body-only] <<'BODY'
+task
+BODY
+
+# Codex → Claude Code
+relay call --name <slug> [--effort <level>] [--body-only] <<'BODY'
 task
 BODY
 ```
@@ -124,7 +130,7 @@ curl -sL https://raw.githubusercontent.com/chrisliu298/relay/main/claude/skills/
   -o ~/.claude/skills/relay/references/prompting-codex.md
 ```
 
-**Codex CLI skill:**
+**Codex skill:**
 
 ```bash
 mkdir -p ~/.codex/skills/relay/scripts ~/.codex/skills/relay/references
@@ -276,7 +282,7 @@ If the response file is missing after invocation, the peer failed or timed out. 
 
 ### Low-Level Commands
 
-For custom workflows or manual orchestration, use `req` and `res` directly. Body can be passed as an argument or piped via stdin.
+For debugging or manual orchestration, use `req` and `res` directly. These are for human operators — agents should always use `relay call`. Body can be passed as an argument or piped via stdin.
 
 ```bash
 # Generate request only
@@ -362,7 +368,7 @@ Without Relay installed, Prism falls back to a same-model adversarial agent — 
 - `.relay/` is gitignored — the script handles this automatically
 - **Codex** uses `--full-auto` (`workspace-write` sandbox)
 - **Claude** uses `--dangerously-skip-permissions` in non-interactive mode — use only in trusted repos
-- Clean up: `rm .relay/*.md` (one-shot) or `rm -rf .relay/{session}/` (session)
+- Clean up: `rm .relay/*.md .relay/*.log` (one-shot) or `rm -rf .relay/{session}/` (session)
 
 ---
 

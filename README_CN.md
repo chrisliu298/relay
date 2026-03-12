@@ -1,20 +1,26 @@
 # Relay
 
-**一个让 [Claude Code](https://docs.anthropic.com/en/docs/claude-code) 和 [Codex CLI](https://github.com/openai/codex) 进行跨模型协作的 skill。**
+**一个让 [Claude Code](https://docs.anthropic.com/en/docs/claude-code) 和 [Codex](https://github.com/openai/codex) 学会互相调用的 skill。**
 
 > *接力棒换手，赛程不断。一个 agent 写下任务，另一个接棒向前。*
 
 [English](README.md) | 中文
 
-Relay 让一个 agent 像调用函数一样调用另一个 agent。写任务、调用对端、读结果。极简协议、自然语言通信、完全可审计。
+Relay 让一个 agent 像调用函数一样调用另一个 agent。写任务、调用对端、读结果。极简协议、自然语言驱动、完全可审计。
 
 ```bash
+# Claude Code → Codex
 relay call --name <slug> [--effort <level>] [--bg] [--body-only] <<'BODY'
+task
+BODY
+
+# Codex → Claude Code
+relay call --name <slug> [--effort <level>] [--body-only] <<'BODY'
 task
 BODY
 ```
 
-Relay 由 Relay 自身构建。Claude Code 和 Codex 通过这个 skill 本身来设计协议、讨论取舍、交叉审查、验证结果 — 任务在两个 agent 之间来回传递，而它们传递任务所用的工具正是它们正在创建的 skill。此后的每次迭代同样如此：skill 在使用中打磨自己。
+Relay 由 Relay 自身构建。Claude Code 和 Codex 通过这个 skill 本身来设计协议、讨论取舍、交叉审查、验证结果 — 任务在两个 agent 之间来回传递，而它们传递任务所用的工具正是它们正在创建的 skill。此后的每次迭代也不例外：skill 在使用中打磨自己。
 
 ## 目录
 
@@ -36,11 +42,11 @@ Relay 由 Relay 自身构建。Claude Code 和 Codex 通过这个 skill 本身�
 
 ## 为什么要用 Relay
 
-使用单一 agent 时，你只能得到单一模型的视角。Relay 让你组合两个模型的能力：
+使用单一 agent 时，你只能发挥单一模型的优势。Relay 让你组合两者：
 
 - **任务委派：** 一个 agent 把任务交给另一个执行
-- **第二意见：** 交叉审查，降低同模型盲区
-- **跨模型流水线：** 一个实现，一个验证
+- **第二意见：** 交叉审查，弥补同模型盲区
+- **跨模型工作流：** 一个实现，一个验证
 - **驱动多 agent 审议** — Relay 是 [Prism](https://github.com/chrisliu298/prism) Parallax 层的传输层
 
 ### 为什么不直接用 subagent
@@ -51,12 +57,12 @@ Subagent 生成的是同一模型的副本。Relay 调用不同模型 — 不同
 
 ## 设计哲学
 
-Relay 融合了 Anthropic 与 OpenAI 在 agent 设计上的实践经验，并将其压缩为一个极简协议。
+Relay 融合了 Anthropic 与 OpenAI 在 agent 设计上的实践经验，提炼为一个极简协议。
 
 - **协议淡出，任务凸显。** Frontmatter 负责路由；任务正文保持自然语言。[^1]
 - **请求自包含，上下文引用优先。** 请求包含任务与响应模板；上下文以文件引用为主，不粘贴大段内容。[^2]
-- **验证是一等信号。** 响应在 frontmatter 中携带 `verify: pass | fail | skip`；验证命令和证据放在正文。[^3]
-- **引导而非强制。** Relay 推荐正文结构，但不施加僵硬 schema。[^4]
+- **验证是一等公民。** 响应在 frontmatter 中携带 `verify: pass | fail | skip`；验证命令和证据放在正文。[^3]
+- **引导而非强制。** Relay 推荐正文结构，但不施加死板的 schema。[^4]
 
 这些选择减少格式错误，把协议规则集中在请求文件中，并让调用方无需解析正文即可按验证结果分支。
 
@@ -64,9 +70,9 @@ Relay 融合了 Anthropic 与 OpenAI 在 agent 设计上的实践经验，并将
 
 ## 由 Agent 打造，也为 Agent 打造
 
-Relay 是 Claude Code 与 Codex 通过 Relay 协议本身协作构建的：双方分别研究各自生态原则，在多轮 relay 往返中讨论取舍，交叉审查彼此改动，并端到端验证最终结果。
+Relay 是 Claude Code 与 Codex 通过 Relay 协议本身协作构建的：双方分别研究各自平台生态，在多轮 relay 往返中讨论取舍，交叉审查彼此改动，并端到端验证最终结果。
 
-这个 skill 也被设计为可修改。`SKILL.md` 是纯 markdown，团队可以按工作流快速调整：
+这个 skill 本身就鼓励修改。`SKILL.md` 是纯 markdown，团队可以按工作流快速调整：
 
 - 调整正文模式以匹配团队约定
 - 增加领域特定的验证命令
@@ -124,7 +130,7 @@ curl -sL https://raw.githubusercontent.com/chrisliu298/relay/main/claude/skills/
   -o ~/.claude/skills/relay/references/prompting-codex.md
 ```
 
-**Codex CLI skill：**
+**Codex skill：**
 
 ```bash
 mkdir -p ~/.codex/skills/relay/scripts ~/.codex/skills/relay/references
@@ -146,7 +152,7 @@ curl -sL https://raw.githubusercontent.com/chrisliu298/relay/main/codex/skills/r
 
 > "让 Codex 审一下 `src/auth.py` 的中间件"
 
-> "把这个实现发给 Claude 做第二意见"
+> "把这个发给 Claude，让它也看看"
 
 也可以直接输入 `/relay`。
 
@@ -156,7 +162,7 @@ curl -sL https://raw.githubusercontent.com/chrisliu298/relay/main/codex/skills/r
 
 ### 模型
 
-每个方向指定了最优模型，**请勿**自行替换，否则可能导致调用失败。
+每个方向指定了特定模型，**请勿**自行替换，否则可能导致调用失败。
 
 | 方向 | 模型参数 | 推理力度 | 说明 |
 |---|---|---|---|
@@ -276,7 +282,7 @@ verify: pass
 
 ### 底层命令
 
-如需自定义工作流或手动编排，可直接使用 `req` 和 `res` 子命令。正文可通过参数或 stdin 管道传入。
+以下命令仅供调试或手动编排 — agent 应始终使用 `relay call`。正文可通过参数或 stdin 管道传入。
 
 ```bash
 # 仅生成请求
@@ -314,12 +320,12 @@ BODY
 
 ### Codex
 
-Codex 通过原生并行工具调用和子 agent 支持并发，但**不支持** shell 后台化（`&`/`disown`/`nohup` — 子进程在 shell 命令返回后不会存活）。
+Codex 通过原生并行工具调用和子 agent 支持并发，但**不支持** shell 后台化（`&`/`disown`/`nohup` — 子进程在 shell 命令结束后无法继续运行）。
 
-**不要从 Codex 使用 `--bg`。** 改为生成一个 Codex 子 agent 来运行阻塞的 relay 调用，同时主 agent 继续本地工作：
+**在 Codex 中不要使用 `--bg`。** 改为启动一个 Codex 子 agent 来执行阻塞的 relay 调用，同时主 agent 继续本地工作：
 
-1. 通过并行工具调用启动独立的本地工作。
-2. 生成一个子 agent，其唯一任务是运行 relay 调用。
+1. 先并行启动彼此独立的本地任务。
+2. 启动一个子 agent，其唯一任务是运行 relay 调用。
 3. 主 agent 继续本地工作。
 4. 仅在需要结果时等待 relay 子 agent。
 
@@ -343,7 +349,7 @@ Codex 通过原生并行工具调用和子 agent 支持并发，但**不支持**
 
 ## Prism 集成
 
-[Prism](https://github.com/chrisliu298/prism) 是一个多 agent 审议 skill，将同一问题发送给多个独立 agent，每个 agent 从不同的分析视角作答。Relay 为 Prism 的 **Parallax** 层提供传输 — 即跨模型 agent，提供模型多样性。
+[Prism](https://github.com/chrisliu298/prism) 是一个多 agent 审议 skill，将同一问题发送给多个独立 agent，每个 agent 从不同分析视角回答同一问题。Relay 为 Prism 的 **Parallax** 层提供传输 — 即跨模型 agent，提供模型多样性。
 
 当 Prism 从 Claude Code 运行时，Parallax 通过 Relay 调用 Codex。当 Prism 从 Codex 运行时，Parallax 通过 Relay 调用 Claude Code。Parallax agent 接收与所有本地 reviewer 完全相同的问题和上下文 — 唯一的区别是分析视角。
 
@@ -353,7 +359,7 @@ npx skills add chrisliu298/prism
 npx skills add chrisliu298/relay
 ```
 
-如果未安装 Relay，Prism 会退回到同模型对抗性 agent — 功能可用但缺少模型多样性。
+如果未安装 Relay，Prism 会退回到同模型对抗性 agent — 功能不受影响，但缺少跨模型视角。
 
 ---
 
@@ -362,7 +368,7 @@ npx skills add chrisliu298/relay
 - `.relay/` 已加入 `.gitignore` — 脚本自动处理
 - **Codex** 默认 `--full-auto`（`workspace-write` 沙盒）
 - **Claude** 非交互模式使用 `--dangerously-skip-permissions` — 仅限可信仓库
-- 清理：`rm .relay/*.md`（单次）或 `rm -rf .relay/{session}/`（会话）
+- 清理：`rm .relay/*.md .relay/*.log`（单次）或 `rm -rf .relay/{session}/`（会话）
 
 ---
 
@@ -370,7 +376,7 @@ npx skills add chrisliu298/relay
 
 ```text
 relay/
-├── scripts/relay                # 规范脚本（唯一源）
+├── scripts/relay                # 规范脚本（唯一真实来源）
 ├── claude/skills/relay/
 │   ├── SKILL.md                 # Claude 专用 skill（调用 Codex）
 │   ├── references/
