@@ -14,7 +14,7 @@ task
 BODY
 ```
 
-由 Claude Code 和 Codex 共同开发。
+Relay 由 Relay 自身构建。Claude Code 和 Codex 通过这个 skill 本身来设计协议、讨论取舍、交叉审查、验证结果 — 任务在两个 agent 之间来回传递，而它们传递任务所用的工具正是它们正在创建的 skill。此后的每次迭代同样如此：skill 在使用中打磨自己。
 
 ## 目录
 

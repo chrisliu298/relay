@@ -14,7 +14,7 @@ task
 BODY
 ```
 
-Co-authored by Claude Code and Codex.
+Relay was built through Relay. Claude Code and Codex designed the protocol, debated trade-offs, reviewed each other's changes, and verified the result — all by passing tasks back and forth through the very skill they were creating. Every revision since has been tested and refined the same way: the skill improves itself.
 
 ## Table of Contents
 
