@@ -2,7 +2,7 @@
 
 **一个让 [Claude Code](https://docs.anthropic.com/en/docs/claude-code) 和 [Codex CLI](https://github.com/openai/codex) 进行跨模型协作的 skill。**
 
-> *在接力赛中，跑者之间传递接力棒。这个 skill 在 AI agent 之间传递任务 — 一个写请求，另一个执行并响应。*
+> *接力棒换手，赛程不断。一个 agent 写下任务，另一个接棒向前。*
 
 [English](README.md) | 中文
 
