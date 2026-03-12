@@ -2,6 +2,8 @@
 
 **A skill for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) and [Codex CLI](https://github.com/openai/codex) that teaches them to talk to each other.**
 
+> *In a relay race, runners pass a baton between them. This skill passes tasks between AI agents — one writes the request, the other executes and responds.*
+
 English | [中文](README_CN.md)
 
 Relay lets one agent call another like a function. Write a task, invoke the peer, read the result. Minimal protocol, natural language, fully auditable.
