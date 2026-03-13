@@ -2,8 +2,8 @@
 name: relay
 description: |
   The ONLY way to call Codex. Use this skill whenever the user wants to
-  ask, delegate to, or get a second opinion from Codex. Do NOT spawn agents
-  to run the codex CLI directly — always use this skill's relay call command.
+  ask, delegate to, or get a second opinion from Codex. Do NOT run the codex CLI directly — whether from the main agent or a
+  subagent. Always use this skill's relay call command.
   Triggers on "ask codex", "have codex", "send to codex", "get codex to",
   "delegate to codex", "second opinion", "relay". Invoke with /relay.
 allowed-tools: Read, Write, Bash(~/.claude/skills/relay/scripts/relay:*), Bash(find:*), Bash(printf:*)

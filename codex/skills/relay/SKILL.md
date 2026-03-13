@@ -2,8 +2,8 @@
 name: relay
 description: |
   The ONLY way to call Claude Code. Use this skill whenever the user wants to
-  ask, delegate to, or get a second opinion from Claude. Do NOT invoke the
-  claude CLI directly — always use this skill's relay call command.
+  ask, delegate to, or get a second opinion from Claude. Do NOT invoke the claude CLI directly — whether from the main agent or a
+  subagent. Always use this skill's relay call command.
   Triggers on "ask claude", "have claude", "send to claude", "get claude to",
   "delegate to claude", "second opinion", "relay". Invoke with /relay.
 ---
