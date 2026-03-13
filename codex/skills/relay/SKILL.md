@@ -26,28 +26,16 @@ The script auto-detects caller/peer from its install path. Always invoke via its
 ### Common Mistakes
 
 - **Empty heredoc body**: The `<<'BODY'` ... `BODY` block must contain text. An empty body causes an immediate error.
-- **Missing `--name` or `--session`**: Every call requires one of these. Omitting both is a script error, not a peer failure.
+- **Missing `--name`**: Every call requires `--name`. Omitting it is a script error, not a peer failure.
 - **Shell backgrounding**: Do not use `&`, `disown`, or `nohup` with relay calls. Use subagents for concurrency instead.
 
-## One-Shot Call
+## Example
 
 ```bash
 ~/.codex/skills/relay/scripts/relay call --name auth-review <<'BODY'
 Review src/auth.py for security issues. Run pytest to verify.
 BODY
 ```
-
-## Session Call (Multi-Turn)
-
-Use sessions when continuing a prior exchange or planning multiple related calls.
-
-```bash
-~/.codex/skills/relay/scripts/relay call --session auth-refactor <<'BODY'
-Fix the issues from my review. Run pytest to verify.
-BODY
-```
-
-Rule of thumb: if the user says "continue", "follow up", or references a prior Claude exchange, use `--session`. Otherwise, use `--name`.
 
 ## Effort Levels
 
@@ -61,7 +49,7 @@ Choose `--effort` based on the task:
 | `high` | Deeper reasoning: security audit, complex refactoring |
 | `xhigh` | Avoid unless necessary. Multi-file architectural redesign |
 
-The `--effort` flag controls Codex's reasoning effort directly. When calling Claude (the peer direction), effort is recorded in the request metadata but has no effect on Claude's behavior — Claude does not expose a reasoning effort parameter.
+The `--effort` flag controls Codex's reasoning effort directly. When calling Claude (the peer direction), `--effort` is accepted by `relay call` but omitted from the request metadata — Claude does not expose a reasoning effort parameter.
 
 Before raising effort, improve the prompt first — add output contracts, verification steps, completeness criteria.
 
@@ -118,7 +106,6 @@ When the script reports a missing response file, the peer failed before producin
 1. **Read the log.** Read the `.log` sidecar file whose path is printed in the error output (`relay: peer log  → <path>`). The log contains the peer's stderr — the actual error message.
 2. **Diagnose.** Common causes and fixes:
    - *Peer binary not found* → verify the peer CLI is installed and in PATH
-   - *Timeout* → the task may need more time; simplify the prompt or break the task into smaller relay calls
    - *Empty body / malformed heredoc* → verify the heredoc has content and a matching terminator
    - *Peer exited non-zero but response file exists* → not a failure; read the response file
 3. **Fix and retry once.** Correct the invocation based on the diagnosis and re-run the relay call.
@@ -155,21 +142,8 @@ If the relay call used for Parallax fails, read the `.log` sidecar, fix the invo
 
 ```bash
 ~/.codex/skills/relay/scripts/relay list
-~/.codex/skills/relay/scripts/relay list --session auth-refactor
 ```
 
 `relay --help` and `relay --version` print usage and version info.
 
-## Low-Level Commands
-
-For manual orchestration, use `req` and `res` to generate files without invoking the peer. If auto-detection fails, pass `--from codex --to claude` explicitly to `call`.
-
-```bash
-# Generate request only (does not invoke claude)
-REQ=$(~/.codex/skills/relay/scripts/relay req --from codex --to claude --name slug "task body")
-
-# Read response
-# Response path: ${REQ%.req.md}.res.md
-```
-
-Do not invoke the `claude` CLI directly — always use `relay call` for the full round-trip.
+If auto-detection fails, pass `--from codex --to claude` explicitly to `call`.

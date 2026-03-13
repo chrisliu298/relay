@@ -169,7 +169,7 @@ Each direction pins a specific model. Do **not** substitute other models — the
 | Claude Code → Codex | `--model gpt-5.4` | Dynamic (`none`–`xhigh`) | Claude selects effort per task |
 | Codex → Claude Code | `--model opus` | N/A | No effort parameter in Claude CLI |
 
-### One-Shot Call
+### Call
 
 One command does the full round-trip: generates the request, invokes the peer, prints the response.
 
@@ -195,7 +195,7 @@ Generated request `.relay/20260219-163042-12345-auth-review.req.md`:
 
 ```markdown
 ---
-relay: 4
+relay: 5
 id: 20260219-163042-12345-auth-review
 from: claude
 to: codex
@@ -208,7 +208,7 @@ Review src/auth.py for security issues. Run pytest to verify.
 Reply: .relay/20260219-163042-12345-auth-review.res.md
 Format:
   ---
-  relay: 4
+  relay: 5
   re: 20260219-163042-12345-auth-review
   from: codex
   to: claude
@@ -218,44 +218,13 @@ Format:
   {your response}
 ```
 
-### Session Call
-
-Sessions keep full turn history so the receiver reads all prior exchanges for context:
-
-```text
-.relay/
-  auth-refactor/         # session directory
-    01.req.md            # turn 1 request
-    01.res.md            # turn 1 response
-    02.req.md            # turn 2 request (can be terse — context is in prior turns)
-    02.res.md            # turn 2 response
-```
-
-**Claude Code → Codex:**
-
-```bash
-~/.claude/skills/relay/scripts/relay call --session auth-refactor --effort medium <<'BODY'
-Fix the issues and add tests. Run pytest to verify.
-BODY
-```
-
-**Codex → Claude Code:**
-
-```bash
-~/.codex/skills/relay/scripts/relay call --session auth-refactor <<'BODY'
-Fix the issues and add tests. Run pytest to verify.
-BODY
-```
-
-Session names must be slugs (`[a-z0-9-]+`). Sessions are sequential — one writer at a time.
-
 ### Output
 
-The `call` subcommand prints the response file content to stdout. The response file (one-shot or session):
+The `call` subcommand prints the response file content to stdout. The response file:
 
 ```markdown
 ---
-relay: 4
+relay: 5
 re: 20260219-163042-12345-auth-review
 from: codex
 to: claude
@@ -279,21 +248,6 @@ Use `--body-only` to strip the frontmatter and get just the markdown body.
 Request and response files are saved in `.relay/` (auto-gitignored). Peer stderr is logged to a `.log` sidecar file alongside the request.
 
 If the response file is missing after invocation, the peer failed or timed out. Inspect the request, response path, and `.log` sidecar before retrying.
-
-### Low-Level Commands
-
-For debugging or manual orchestration, use `req` and `res` directly. These are for human operators — agents should always use `relay call`. Body can be passed as an argument or piped via stdin.
-
-```bash
-# Generate request only
-REQ=$(~/.claude/skills/relay/scripts/relay req --from claude --to codex --name slug "task body")
-
-# Then invoke the peer manually
-codex exec --model gpt-5.4 -c 'model_reasoning_effort="medium"' --full-auto "Read and execute $REQ"
-
-# Response path
-echo "${REQ%.req.md}.res.md"
-```
 
 ---
 
@@ -337,9 +291,6 @@ Codex supports concurrency via native parallel tool calls and subagents, but **n
 # List all relay files
 ~/.claude/skills/relay/scripts/relay list
 
-# List files for a specific session
-~/.claude/skills/relay/scripts/relay list --session auth-refactor
-
 # Show usage and version
 ~/.claude/skills/relay/scripts/relay --help
 ~/.claude/skills/relay/scripts/relay --version
@@ -368,7 +319,7 @@ Without Relay installed, Prism falls back to a same-model adversarial agent — 
 - `.relay/` is gitignored — the script handles this automatically
 - **Codex** uses `--full-auto` (`workspace-write` sandbox) and `--skip-git-repo-check` (Codex refuses to run in non-git directories by default)
 - **Claude** uses `--dangerously-skip-permissions` in non-interactive mode — use only in trusted repos
-- Clean up: `rm .relay/*.md .relay/*.log` (one-shot) or `rm -rf .relay/{session}/` (session)
+- Clean up: `rm .relay/*.md .relay/*.log`
 
 ---
 

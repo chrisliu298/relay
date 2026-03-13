@@ -169,7 +169,7 @@ curl -sL https://raw.githubusercontent.com/chrisliu298/relay/main/codex/skills/r
 | Claude Code → Codex | `--model gpt-5.4` | 动态（`none`–`xhigh`） | Claude 根据任务选择推理力度 |
 | Codex → Claude Code | `--model opus` | 不适用 | Claude CLI 无推理力度参数 |
 
-### 单次调用
+### 调用
 
 一条命令完成完整往返：生成请求、调用对端、输出响应。
 
@@ -195,7 +195,7 @@ BODY
 
 ```markdown
 ---
-relay: 4
+relay: 5
 id: 20260219-163042-12345-auth-review
 from: claude
 to: codex
@@ -208,7 +208,7 @@ effort: medium
 Reply: .relay/20260219-163042-12345-auth-review.res.md
 Format:
   ---
-  relay: 4
+  relay: 5
   re: 20260219-163042-12345-auth-review
   from: codex
   to: claude
@@ -218,44 +218,13 @@ Format:
   {your response}
 ```
 
-### 会话调用
-
-会话保留完整轮次历史，接收方读取所有先前交换作为上下文：
-
-```text
-.relay/
-  auth-refactor/         # 会话目录
-    01.req.md            # 第 1 轮请求
-    01.res.md            # 第 1 轮响应
-    02.req.md            # 第 2 轮请求（可简短 — 上下文在先前轮次中）
-    02.res.md            # 第 2 轮响应
-```
-
-**Claude Code → Codex：**
-
-```bash
-~/.claude/skills/relay/scripts/relay call --session auth-refactor --effort medium <<'BODY'
-修复问题并添加测试。运行 pytest 验证。
-BODY
-```
-
-**Codex → Claude Code：**
-
-```bash
-~/.codex/skills/relay/scripts/relay call --session auth-refactor <<'BODY'
-修复问题并添加测试。运行 pytest 验证。
-BODY
-```
-
-会话名必须是 slug（`[a-z0-9-]+`）。会话按顺序执行 — 同一时间只有一个写入者。
-
 ### 输出
 
-`call` 子命令将响应文件内容输出到 stdout。响应文件（单次或会话）：
+`call` 子命令将响应文件内容输出到 stdout。响应文件：
 
 ```markdown
 ---
-relay: 4
+relay: 5
 re: 20260219-163042-12345-auth-review
 from: codex
 to: claude
@@ -279,21 +248,6 @@ verify: pass
 请求和响应文件保存在 `.relay/`（自动加入 `.gitignore`）。对端 stderr 记录在请求旁的 `.log` 伴随文件中。
 
 若调用后响应文件不存在，对端失败或超时。请先检查请求、响应路径和 `.log` 伴随文件，再决定是否重试。
-
-### 底层命令
-
-以下命令仅供调试或手动编排 — agent 应始终使用 `relay call`。正文可通过参数或 stdin 管道传入。
-
-```bash
-# 仅生成请求
-REQ=$(~/.claude/skills/relay/scripts/relay req --from claude --to codex --name slug "task body")
-
-# 手动调用对端
-codex exec --model gpt-5.4 -c 'model_reasoning_effort="medium"' --full-auto "Read and execute $REQ"
-
-# 响应文件路径
-echo "${REQ%.req.md}.res.md"
-```
 
 ---
 
@@ -337,9 +291,6 @@ Codex 通过原生并行工具调用和子 agent 支持并发，但**不支持**
 # 列出所有 relay 文件
 ~/.claude/skills/relay/scripts/relay list
 
-# 列出特定会话的文件
-~/.claude/skills/relay/scripts/relay list --session auth-refactor
-
 # 显示用法和版本
 ~/.claude/skills/relay/scripts/relay --help
 ~/.claude/skills/relay/scripts/relay --version
@@ -368,7 +319,7 @@ npx skills add chrisliu298/relay
 - `.relay/` 已加入 `.gitignore` — 脚本自动处理
 - **Codex** 默认 `--full-auto`（`workspace-write` 沙盒）并附加 `--skip-git-repo-check`（Codex 默认拒绝在非 git 目录中运行）
 - **Claude** 非交互模式使用 `--dangerously-skip-permissions` — 仅限可信仓库
-- 清理：`rm .relay/*.md .relay/*.log`（单次）或 `rm -rf .relay/{session}/`（会话）
+- 清理：`rm .relay/*.md .relay/*.log`
 
 ---
 

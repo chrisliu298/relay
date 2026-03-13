@@ -28,27 +28,15 @@ The script auto-detects caller/peer from its install path. Use `scripts/relay` i
 ### Common Mistakes
 
 - **Empty heredoc body**: The `<<'BODY'` ... `BODY` block must contain text. An empty body causes an immediate error.
-- **Missing `--name` or `--session`**: Every call requires one of these. Omitting both is a script error, not a peer failure.
+- **Missing `--name`**: Every call requires `--name`. Omitting it is a script error, not a peer failure.
 
-## One-Shot Call
+## Example
 
 ```bash
 ~/.claude/skills/relay/scripts/relay call --name auth-review --effort medium <<'BODY'
 Review src/auth.py for security issues. Run pytest to verify.
 BODY
 ```
-
-## Session Call (Multi-Turn)
-
-Use sessions when continuing a prior exchange or planning multiple related calls.
-
-```bash
-~/.claude/skills/relay/scripts/relay call --session auth-refactor --effort medium <<'BODY'
-Fix the issues from my review. Run pytest to verify.
-BODY
-```
-
-Rule of thumb: if the user says "continue", "follow up", or references a prior Codex exchange, use `--session`. Otherwise, use `--name`.
 
 ## Effort Levels
 
@@ -159,21 +147,8 @@ If the Parallax relay call fails, treat it as a recoverable transport problem. R
 
 ```bash
 ~/.claude/skills/relay/scripts/relay list
-~/.claude/skills/relay/scripts/relay list --session auth-refactor
 ```
 
 `relay --help` and `relay --version` print usage and version info.
 
-## Low-Level Commands
-
-For manual orchestration, use `req` and `res` to generate files without invoking the peer. If auto-detection fails, pass `--from claude --to codex` explicitly to `call`.
-
-```bash
-# Generate request only (does not invoke codex)
-REQ=$(~/.claude/skills/relay/scripts/relay req --from claude --to codex --name slug "task body")
-
-# Read response (use the Read tool, not cat)
-# Response path: ${REQ%.req.md}.res.md
-```
-
-Do not invoke `codex exec` directly — always use `relay call` for the full round-trip.
+If auto-detection fails, pass `--from claude --to codex` explicitly to `call`.
