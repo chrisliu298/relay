@@ -2,10 +2,11 @@
 name: relay
 description: |
   The ONLY way to call Codex. Use this skill whenever the user wants to
-  ask, delegate to, or get a second opinion from Codex. Do NOT run the codex CLI directly — whether from the main agent or a
-  subagent. Always use this skill's relay call command.
-  Triggers on "ask codex", "have codex", "send to codex", "get codex to",
-  "delegate to codex", "second opinion", "relay". Invoke with /relay.
+  ask, delegate to, or get a second opinion from Codex. Do NOT run the
+  codex CLI directly — whether from the main agent or a subagent. Always
+  use this skill's relay call command. Triggers on "ask codex", "have
+  codex", "send to codex", "get codex to", "delegate to codex", "second
+  opinion", "relay". Invoke with /relay.
 allowed-tools: Read, Write, Bash(~/.claude/skills/relay/scripts/relay:*), Bash(find:*), Bash(printf:*)
 user-invocable: true
 ---
@@ -23,6 +24,12 @@ BODY
 The script auto-detects caller/peer from its install path. Use `scripts/relay` inside this skill directory.
 
 **All Codex interactions go through `relay call`.** Do not invoke `codex exec` directly, do not spawn agents to run the codex CLI, and do not pass model flags (`-m`, `--model`). The model and invocation method are hardcoded in the script.
+
+### Common Mistakes
+
+- **Timeout too short**: Complex tasks need `timeout: 600000` (10 min) on the Bash tool call. The default 2 minutes is insufficient for most relay tasks.
+- **Empty heredoc body**: The `<<'BODY'` ... `BODY` block must contain text. An empty body causes an immediate error.
+- **Missing `--name` or `--session`**: Every call requires one of these. Omitting both is a script error, not a peer failure.
 
 ## One-Shot Call
 
@@ -104,7 +111,22 @@ Use `--body-only` to strip the frontmatter and get just the markdown body.
 
 Request and response files are saved in `.relay/` (auto-gitignored). Peer stderr is logged to a `.log` sidecar file alongside the request.
 
-If the response file is missing, the script reports failure. Do not blindly retry — inspect the request, response path, and `.log` sidecar first. If the transport failed before the peer started, a retry is safe. If the task already executed, prefer continuing in the same session after diagnosis.
+### When a relay call fails
+
+**You must diagnose and retry — do not report failure to the user without attempting a fix first.**
+
+When the script reports a missing response file, the peer failed before producing output. Each call generates a new request ID, so retrying does not re-execute previous attempts.
+
+1. **Read the log.** Use the Read tool on the `.log` sidecar path printed in the error output (`relay: peer log  → <path>`). The log contains the peer's stderr — the actual error message.
+2. **Diagnose.** Common causes and fixes:
+   - *Peer binary not found* → verify the peer CLI is installed and in PATH
+   - *Timeout* → increase the Bash timeout: `timeout: 600000`
+   - *Empty body / malformed heredoc* → verify the heredoc has content and a matching terminator
+   - *Peer exited non-zero but response file exists* → not a failure; read the response file
+3. **Fix and retry once.** Correct the invocation based on the diagnosis and re-run the relay call.
+4. **If the retry also fails**, read the log again. Only then report the failure to the user with the diagnosed cause.
+
+The first failure is information, not a stop signal.
 
 ## Async / Parallel
 
@@ -130,6 +152,8 @@ BODY
 When Relay is used as the Parallax transport inside Prism, the relay call receives the **same full question and same context** as every local reviewer — only the lens (weighing posture) differs. Do not narrow the prompt for the Parallax agent.
 
 Launch the relay Bash call with `run_in_background: true` in the same parallel dispatch step as the local reviewer subagents. Do not wrap Relay itself in another subagent layer.
+
+If the Parallax relay call fails, treat it as a recoverable transport problem. Read the `.log` sidecar, fix the invocation, and retry once before declaring Parallax unavailable.
 
 ## Timeout
 

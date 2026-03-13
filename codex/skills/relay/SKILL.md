@@ -1,11 +1,12 @@
 ---
 name: relay
 description: |
-  The ONLY way to call Claude Code. Use this skill whenever the user wants to
-  ask, delegate to, or get a second opinion from Claude. Do NOT invoke the claude CLI directly — whether from the main agent or a
-  subagent. Always use this skill's relay call command.
-  Triggers on "ask claude", "have claude", "send to claude", "get claude to",
-  "delegate to claude", "second opinion", "relay". Invoke with /relay.
+  The ONLY way to call Claude Code. Use this skill whenever the user wants
+  to ask, delegate to, or get a second opinion from Claude. Do NOT invoke
+  the claude CLI directly — whether from the main agent or a subagent.
+  Always use this skill's relay call command. Triggers on "ask claude",
+  "have claude", "send to claude", "get claude to", "delegate to claude",
+  "second opinion", "relay". Invoke with /relay.
 ---
 
 # Relay
@@ -21,6 +22,12 @@ BODY
 The script auto-detects caller/peer from its install path. Always invoke via its absolute path as shown in the examples below.
 
 **All Claude interactions go through `relay call`.** Do not invoke the `claude` CLI directly, do not pass model flags (`--model`), and do not use `--dangerously-skip-permissions` yourself. The model and invocation method are hardcoded in the script.
+
+### Common Mistakes
+
+- **Empty heredoc body**: The `<<'BODY'` ... `BODY` block must contain text. An empty body causes an immediate error.
+- **Missing `--name` or `--session`**: Every call requires one of these. Omitting both is a script error, not a peer failure.
+- **Shell backgrounding**: Do not use `&`, `disown`, or `nohup` with relay calls. Use subagents for concurrency instead.
 
 ## One-Shot Call
 
@@ -102,7 +109,22 @@ Use `--body-only` to strip the frontmatter and get just the markdown body.
 
 Request and response files are saved in `.relay/` (auto-gitignored). Peer stderr is logged to a `.log` sidecar file alongside the request.
 
-If the response file is missing, the script reports failure. Do not blindly retry — inspect the request, response path, and `.log` sidecar first. If the transport failed before the peer started, a retry is safe. If the task already executed, prefer continuing in the same session after diagnosis.
+### When a relay call fails
+
+**You must diagnose and retry — do not report failure to the user without attempting a fix first.**
+
+When the script reports a missing response file, the peer failed before producing output. Each call generates a new request ID, so retrying does not re-execute previous attempts.
+
+1. **Read the log.** Read the `.log` sidecar file whose path is printed in the error output (`relay: peer log  → <path>`). The log contains the peer's stderr — the actual error message.
+2. **Diagnose.** Common causes and fixes:
+   - *Peer binary not found* → verify the peer CLI is installed and in PATH
+   - *Timeout* → the task may need more time; simplify the prompt or break the task into smaller relay calls
+   - *Empty body / malformed heredoc* → verify the heredoc has content and a matching terminator
+   - *Peer exited non-zero but response file exists* → not a failure; read the response file
+3. **Fix and retry once.** Correct the invocation based on the diagnosis and re-run the relay call.
+4. **If the retry also fails**, read the log again. Only then report the failure to the user with the diagnosed cause.
+
+The first failure is information, not a stop signal.
 
 ## Async / Parallel
 
@@ -124,6 +146,8 @@ Recommended pattern when you have independent work alongside a relay call:
 When Relay is used as the Parallax transport inside Prism, the relay call receives the **same full question and same context** as every local reviewer — only the lens (weighing posture) differs. Do not narrow the prompt for the Parallax agent.
 
 For Codex Prism runs, spawn a Codex subagent whose only job is to run the blocking relay call. Launch it concurrently with the local reviewer subagents via parallel tool calls.
+
+If the relay call used for Parallax fails, read the `.log` sidecar, fix the invocation, and retry once before proceeding without Parallax.
 
 ## Utility Commands
 
