@@ -27,7 +27,6 @@ The script auto-detects caller/peer from its install path. Use `scripts/relay` i
 
 ### Common Mistakes
 
-- **Timeout too short**: Complex tasks need `timeout: 600000` (10 min) on the Bash tool call. The default 2 minutes is insufficient for most relay tasks.
 - **Empty heredoc body**: The `<<'BODY'` ... `BODY` block must contain text. An empty body causes an immediate error.
 - **Missing `--name` or `--session`**: Every call requires one of these. Omitting both is a script error, not a peer failure.
 
@@ -120,7 +119,6 @@ When the script reports a missing response file, the peer failed before producin
 1. **Read the log.** Use the Read tool on the `.log` sidecar path printed in the error output (`relay: peer log  → <path>`). The log contains the peer's stderr — the actual error message.
 2. **Diagnose.** Common causes and fixes:
    - *Peer binary not found* → verify the peer CLI is installed and in PATH
-   - *Timeout* → increase the Bash timeout: `timeout: 600000`
    - *Empty body / malformed heredoc* → verify the heredoc has content and a matching terminator
    - *Peer exited non-zero but response file exists* → not a failure; read the response file
 3. **Fix and retry once.** Correct the invocation based on the diagnosis and re-run the relay call.
@@ -154,14 +152,6 @@ When Relay is used as the Parallax transport inside Prism, the relay call receiv
 Launch the relay Bash call with `run_in_background: true` in the same parallel dispatch step as the local reviewer subagents. Do not wrap Relay itself in another subagent layer.
 
 If the Parallax relay call fails, treat it as a recoverable transport problem. Read the `.log` sidecar, fix the invocation, and retry once before declaring Parallax unavailable.
-
-## Timeout
-
-For complex tasks, set a longer Bash timeout (default is 2 minutes, max 10 minutes):
-
-```
-Bash(timeout: 600000)
-```
 
 ## Utility Commands
 
