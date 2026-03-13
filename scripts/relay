@@ -87,6 +87,8 @@ strip_frontmatter() {
 }
 
 # Auto-detect caller and peer from the skill directory this script lives in.
+# Falls back to environment variables when the path doesn't match a known
+# skill directory (e.g. invoked from the repo root during development).
 # Returns "from to" (e.g. "claude codex") or empty string if unknown.
 detect_peers() {
   local script_dir
@@ -94,7 +96,18 @@ detect_peers() {
   case "$script_dir" in
     */.claude/skills/* | */claude/skills/*) echo "claude codex" ;;
     */.codex/skills/* | */codex/skills/*)   echo "codex claude" ;;
-    *)                                      echo "" ;;
+    *)
+      # Fallback: detect caller from agent-set environment variables.
+      # Check Codex markers first — CLAUDECODE=1 can leak into Codex's
+      # sandbox via env inheritance in multi-hop relay chains.
+      if [ -n "${CODEX_SANDBOX:-}" ] || [ -n "${CODEX_SANDBOX_NETWORK_DISABLED:-}" ]; then
+        echo "codex claude"
+      elif [ "${CLAUDECODE:-}" = "1" ]; then
+        echo "claude codex"
+      else
+        echo ""
+      fi
+      ;;
   esac
 }
 
