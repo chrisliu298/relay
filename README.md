@@ -366,7 +366,7 @@ Without Relay installed, Prism falls back to a same-model adversarial agent — 
 ## Safety
 
 - `.relay/` is gitignored — the script handles this automatically
-- **Codex** uses `--full-auto` (`workspace-write` sandbox)
+- **Codex** uses `--full-auto` (`workspace-write` sandbox) and `--skip-git-repo-check` (Codex refuses to run in non-git directories by default)
 - **Claude** uses `--dangerously-skip-permissions` in non-interactive mode — use only in trusted repos
 - Clean up: `rm .relay/*.md .relay/*.log` (one-shot) or `rm -rf .relay/{session}/` (session)
 

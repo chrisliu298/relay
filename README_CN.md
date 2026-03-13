@@ -366,7 +366,7 @@ npx skills add chrisliu298/relay
 ## 安全
 
 - `.relay/` 已加入 `.gitignore` — 脚本自动处理
-- **Codex** 默认 `--full-auto`（`workspace-write` 沙盒）
+- **Codex** 默认 `--full-auto`（`workspace-write` 沙盒）并附加 `--skip-git-repo-check`（Codex 默认拒绝在非 git 目录中运行）
 - **Claude** 非交互模式使用 `--dangerously-skip-permissions` — 仅限可信仓库
 - 清理：`rm .relay/*.md .relay/*.log`（单次）或 `rm -rf .relay/{session}/`（会话）
 
