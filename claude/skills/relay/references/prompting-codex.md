@@ -220,9 +220,9 @@ Choose the reasoning effort level based on the task you are delegating.
 | `none` | Fast, cost/latency-sensitive tasks where the model does not need to think. Best for execution-heavy work: workflow steps, field extraction, triage, short structured transforms. |
 | `low` | Latency-sensitive tasks where a small amount of thinking can produce a meaningful accuracy gain, especially with complex instructions. |
 | `medium` or `high` | Reserve for tasks that truly require stronger reasoning and can absorb the latency and cost tradeoff. Choose between them based on how much performance gain the task gets from additional reasoning. Start with `medium` for research-heavy work. |
-| `xhigh` | Avoid as a default unless evals show clear benefits. Best suited for long, agentic, reasoning-heavy tasks where maximum intelligence matters more than speed or cost. |
+| `xhigh` | Good default for agentic, reasoning-heavy tasks where correctness and thoroughness matter. Especially valuable for tasks that require one-shot correctness — where there is no interactive feedback loop and the output must be right the first time. Use freely for multi-step research, complex debugging, code review, and any task where deeper thinking improves outcomes. Only drop to a lower level when speed or cost is the primary concern. |
 
-**Escalation rule**: Reasoning effort is a last-mile tuning knob, not the primary way to improve quality. Before raising the effort level, first try improving the prompt itself — add an `<output_contract>`, `<completeness_contract>`, or `<verification_loop>`. If the model still feels too literal or stops at the first plausible answer, add a dig-deeper nudge before increasing effort:
+**Escalation rule**: Both prompt quality and reasoning effort matter. Improve the prompt first — add an `<output_contract>`, `<completeness_contract>`, or `<verification_loop>` — but don't hesitate to use `xhigh` when the task is complex or correctness-critical. If the model feels too literal or stops at the first plausible answer, combine a dig-deeper nudge with higher effort:
 
 ```xml
 <dig_deeper_nudge>
