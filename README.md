@@ -106,43 +106,23 @@ The `call` subcommand wraps the full round-trip: generates the request file, inv
 
 ## Installation
 
-### Quick install (npx)
+Clone into your agent's skills directory. Relay has agent-specific SKILL.md files, so clone the appropriate subdirectory content.
+
+**Claude Code:**
 
 ```bash
-npx skills add chrisliu298/relay
+git clone https://github.com/chrisliu298/relay.git ~/.cache/relay-src
+ln -s ~/.cache/relay-src/claude/skills/relay ~/.claude/skills/relay
 ```
 
-This installs the skill for all supported agents (Claude Code, Codex) using the [skills CLI](https://github.com/vercel-labs/skills).
-
-### Manual install (curl)
-
-Each skill bundles its own `scripts/relay` generator — no shared binary needed.
-
-**Claude Code skill:**
+**Codex:**
 
 ```bash
-mkdir -p ~/.claude/skills/relay/scripts ~/.claude/skills/relay/references
-curl -sL https://raw.githubusercontent.com/chrisliu298/relay/main/claude/skills/relay/SKILL.md \
-  -o ~/.claude/skills/relay/SKILL.md
-curl -sL https://raw.githubusercontent.com/chrisliu298/relay/main/scripts/relay \
-  -o ~/.claude/skills/relay/scripts/relay && chmod +x ~/.claude/skills/relay/scripts/relay
-curl -sL https://raw.githubusercontent.com/chrisliu298/relay/main/claude/skills/relay/references/prompting-codex.md \
-  -o ~/.claude/skills/relay/references/prompting-codex.md
+git clone https://github.com/chrisliu298/relay.git ~/.cache/relay-src
+ln -s ~/.cache/relay-src/codex/skills/relay ~/.codex/skills/relay
 ```
 
-**Codex skill:**
-
-```bash
-mkdir -p ~/.codex/skills/relay/scripts ~/.codex/skills/relay/references
-curl -sL https://raw.githubusercontent.com/chrisliu298/relay/main/codex/skills/relay/SKILL.md \
-  -o ~/.codex/skills/relay/SKILL.md
-curl -sL https://raw.githubusercontent.com/chrisliu298/relay/main/scripts/relay \
-  -o ~/.codex/skills/relay/scripts/relay && chmod +x ~/.codex/skills/relay/scripts/relay
-curl -sL https://raw.githubusercontent.com/chrisliu298/relay/main/codex/skills/relay/references/prompting-claude.md \
-  -o ~/.codex/skills/relay/references/prompting-claude.md
-```
-
-**Important:** Install and update both skills together, and keep them on the same Relay version. Request/response formats must match; version skew can cause parse failures on either side.
+**Important:** Install both agent skills from the same clone and keep them on the same version. Request/response formats must match; version skew can cause parse failures on either side.
 
 ---
 
@@ -306,8 +286,9 @@ When Prism runs from Claude Code, Parallax calls Codex via Relay. When Prism run
 
 ```bash
 # Install both for the full Prism experience
-npx skills add chrisliu298/prism
-npx skills add chrisliu298/relay
+git clone https://github.com/chrisliu298/prism.git ~/.claude/skills/prism
+git clone https://github.com/chrisliu298/relay.git ~/.cache/relay-src
+ln -s ~/.cache/relay-src/claude/skills/relay ~/.claude/skills/relay
 ```
 
 Without Relay installed, Prism falls back to a same-model adversarial agent — functional but with reduced diversity.

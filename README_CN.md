@@ -106,43 +106,23 @@ sequenceDiagram
 
 ## 安装
 
-### 快速安装（npx）
+克隆到 agent 的 skills 目录。Relay 为每个 agent 提供不同的 SKILL.md，因此需要通过符号链接安装对应的子目录。
+
+**Claude Code：**
 
 ```bash
-npx skills add chrisliu298/relay
+git clone https://github.com/chrisliu298/relay.git ~/.cache/relay-src
+ln -s ~/.cache/relay-src/claude/skills/relay ~/.claude/skills/relay
 ```
 
-使用 [skills CLI](https://github.com/vercel-labs/skills) 为所有支持的 agent（Claude Code、Codex）安装 skill。
-
-### 手动安装（curl）
-
-每个 skill 自带 `scripts/relay` 生成脚本，无需共享二进制文件。
-
-**Claude Code skill：**
+**Codex：**
 
 ```bash
-mkdir -p ~/.claude/skills/relay/scripts ~/.claude/skills/relay/references
-curl -sL https://raw.githubusercontent.com/chrisliu298/relay/main/claude/skills/relay/SKILL.md \
-  -o ~/.claude/skills/relay/SKILL.md
-curl -sL https://raw.githubusercontent.com/chrisliu298/relay/main/scripts/relay \
-  -o ~/.claude/skills/relay/scripts/relay && chmod +x ~/.claude/skills/relay/scripts/relay
-curl -sL https://raw.githubusercontent.com/chrisliu298/relay/main/claude/skills/relay/references/prompting-codex.md \
-  -o ~/.claude/skills/relay/references/prompting-codex.md
+git clone https://github.com/chrisliu298/relay.git ~/.cache/relay-src
+ln -s ~/.cache/relay-src/codex/skills/relay ~/.codex/skills/relay
 ```
 
-**Codex skill：**
-
-```bash
-mkdir -p ~/.codex/skills/relay/scripts ~/.codex/skills/relay/references
-curl -sL https://raw.githubusercontent.com/chrisliu298/relay/main/codex/skills/relay/SKILL.md \
-  -o ~/.codex/skills/relay/SKILL.md
-curl -sL https://raw.githubusercontent.com/chrisliu298/relay/main/scripts/relay \
-  -o ~/.codex/skills/relay/scripts/relay && chmod +x ~/.codex/skills/relay/scripts/relay
-curl -sL https://raw.githubusercontent.com/chrisliu298/relay/main/codex/skills/relay/references/prompting-claude.md \
-  -o ~/.codex/skills/relay/references/prompting-claude.md
-```
-
-**重要：** 两个 skill 必须一起安装并同步更新，且保持同一 Relay 版本。请求/响应格式必须匹配；版本不一致会导致任一侧解析失败。
+**重要：** 两个 skill 必须从同一份克隆安装并保持同一版本。请求/响应格式必须匹配；版本不一致会导致任一侧解析失败。
 
 ---
 
@@ -306,8 +286,9 @@ Codex 通过原生并行工具调用和子 agent 支持并发，但**不支持**
 
 ```bash
 # 安装两个 skill 以获得完整的 Prism 体验
-npx skills add chrisliu298/prism
-npx skills add chrisliu298/relay
+git clone https://github.com/chrisliu298/prism.git ~/.claude/skills/prism
+git clone https://github.com/chrisliu298/relay.git ~/.cache/relay-src
+ln -s ~/.cache/relay-src/claude/skills/relay ~/.claude/skills/relay
 ```
 
 如果未安装 Relay，Prism 会退回到同模型对抗性 agent — 功能不受影响，但缺少跨模型视角。
