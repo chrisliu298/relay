@@ -4,7 +4,7 @@ set -euo pipefail
 # relay — relay protocol v5: call a peer agent
 #
 # Usage:
-#   relay call  --name <slug> [--effort <level>] [--bg] [--body-only] [--] "<body>"
+#   relay call  --name <slug> [--effort <level>] [--body-only] [--] "<body>"
 #   relay list
 #   relay --help | --version
 #
@@ -150,7 +150,7 @@ EOF
 }
 
 cmd_call() {
-  local name="" effort="medium" body="" from="" to="" bg=false
+  local name="" effort="medium" body="" from="" to=""
   local body_only=false
 
   while [ $# -gt 0 ]; do
@@ -159,7 +159,6 @@ cmd_call() {
       --effort)    need_arg $# "$1"; effort="$2"; shift 2 ;;
       --from)      need_arg $# "$1"; from="$2"; shift 2 ;;
       --to)        need_arg $# "$1"; to="$2"; shift 2 ;;
-      --bg)        bg=true; shift ;;
       --body-only) body_only=true; shift ;;
       --)          shift; body="$*"; break ;;
       -*)          die "call: unknown flag: $1" ;;
@@ -183,11 +182,6 @@ cmd_call() {
       [ -n "$from" ] || die "call: --from required (could not auto-detect)"
       [ -n "$to" ]   || die "call: --to required (could not auto-detect)"
     fi
-  fi
-
-  # Reject --bg from Codex (shell backgrounding is unreliable in Codex sandbox)
-  if $bg && [ "$from" = "codex" ]; then
-    die "call: --bg is not supported from Codex (use a subagent for async relay calls)"
   fi
 
   # Validate effort level
@@ -231,16 +225,7 @@ cmd_call() {
     peer_cmd=(env -u CLAUDECODE claude --model opus -p --dangerously-skip-permissions "Read and execute $req_path")
   fi
 
-  # Async: invoke in background and return response path for polling
-  if $bg; then
-    "${peer_cmd[@]}" </dev/null >/dev/null 2>"$log_path" &
-    disown 2>/dev/null
-    echo "relay: async    → poll for $res_path" >&2
-    echo "$res_path"
-    return 0
-  fi
-
-  # Sync: invoke and capture exit status (don't let set -e abort before checking response)
+  # Invoke peer and capture exit status (don't let set -e abort before checking response)
   local peer_exit=0
   "${peer_cmd[@]}" >/dev/null 2>"$log_path" || peer_exit=$?
 
@@ -277,7 +262,7 @@ cmd_help() {
 relay — relay protocol v5: call a peer agent
 
 Usage:
-  relay call  --name <slug> [--effort <level>] [--bg] [--body-only] [--] "<body>"
+  relay call  --name <slug> [--effort <level>] [--body-only] [--] "<body>"
   relay list
   relay --help | --version
 
@@ -288,7 +273,6 @@ Subcommands:
 Call options:
   --name <slug>      Call identifier
   --effort <level>   Reasoning effort: none, low, medium (default), high, xhigh
-  --bg               Run peer in background (returns response path for polling)
   --body-only        Strip frontmatter from response output
   --from <peer>      Override caller detection (claude or codex)
   --to <peer>        Override peer detection (claude or codex)
