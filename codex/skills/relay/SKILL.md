@@ -26,6 +26,7 @@ The script auto-detects caller/peer from its install path — it looks for `.cla
 ### Common Mistakes
 
 - **Wrong script path**: The script must be invoked from `~/.codex/skills/relay/scripts/relay`. Any other copy will break peer auto-detection.
+- **Premature failure diagnosis**: If a relay call is running in a subagent, do not inspect `.relay` files or diagnose failure from the main agent before the subagent has returned. The subagent blocks until the relay call completes — wait for it.
 - **Empty heredoc body**: The `<<'BODY'` ... `BODY` block must contain text. An empty body causes an immediate error.
 - **Missing `--name`**: Every call requires `--name`. Omitting it is a script error, not a peer failure.
 - **Shell backgrounding**: Do not use `&`, `disown`, or `nohup` with relay calls. Use subagents for concurrency instead.
@@ -102,7 +103,9 @@ Request and response files are saved in `.relay/` (auto-gitignored). Peer stderr
 
 **You must diagnose and retry — do not report failure to the user without attempting a fix first.**
 
-When the script reports a missing response file, the peer failed before producing output. Each call generates a new request ID, so retrying does not re-execute previous attempts.
+**Subagent guard:** If the relay call is running inside a subagent, this diagnosis flow applies only after the subagent has returned. Until the subagent completes, the relay call is still in progress — do not inspect `.relay` files from the main agent or conclude the peer has failed.
+
+When a completed relay call reports a missing response file, the peer failed before producing output. Each call generates a new request ID, so retrying does not re-execute previous attempts.
 
 1. **Read the log.** Read the `.log` sidecar file whose path is printed in the error output (`relay: peer log  → <path>`). The log contains the peer's stderr — the actual error message.
 2. **Diagnose.** Common causes and fixes:
@@ -118,14 +121,12 @@ The first failure is information, not a stop signal.
 
 Codex supports concurrency via native parallel tool calls and subagents, but **not** via shell backgrounding (`&`/`disown`/`nohup`). Background child processes do not survive after the shell command returns in Codex's sandbox.
 
-**Do not use `--bg`** — the script rejects it when called from Codex.
-
 Recommended pattern when you have independent work alongside a relay call:
 
 1. Start any independent local work in parallel tool calls.
 2. Spawn a Codex subagent whose only job is to run the blocking relay call.
 3. Continue local work in the main agent.
-4. Wait for the relay subagent only when you need Claude's answer.
+4. Wait for the relay subagent only when you need Claude's answer. The subagent's return is the only readiness signal — do not inspect `.relay` files from the main agent before the subagent completes.
 
 **Rule: Never serialize independent work. Use subagents to run relay calls concurrently with local work.**
 
@@ -135,7 +136,7 @@ When Relay is used as the Parallax transport inside Prism, the relay call receiv
 
 For Codex Prism runs, spawn a Codex subagent whose only job is to run the blocking relay call. Launch it concurrently with the local reviewer subagents via parallel tool calls.
 
-If the relay call used for Parallax fails, read the `.log` sidecar, fix the invocation, and retry once before proceeding without Parallax.
+If the relay call used for Parallax fails (after the subagent has returned), read the `.log` sidecar, fix the invocation, and retry once before proceeding without Parallax.
 
 ## Utility Commands
 
