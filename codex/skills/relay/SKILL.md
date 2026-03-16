@@ -140,12 +140,6 @@ If the relay call used for Parallax fails (after the subagent has returned), rea
 
 ## Utility Commands
 
-`relay list` shows all protocol files:
-
-```bash
-~/.codex/skills/relay/scripts/relay list
-```
-
 `relay --help` and `relay --version` print usage and version info.
 
 If auto-detection fails, pass `--from codex --to claude` explicitly to `call`.

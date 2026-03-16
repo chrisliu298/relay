@@ -268,9 +268,6 @@ Codex supports concurrency via native parallel tool calls and subagents, but **n
 ## Utility Commands
 
 ```bash
-# List all relay files
-~/.claude/skills/relay/scripts/relay list
-
 # Show usage and version
 ~/.claude/skills/relay/scripts/relay --help
 ~/.claude/skills/relay/scripts/relay --version

@@ -136,12 +136,6 @@ If the Parallax relay call fails (after its background completion notification h
 
 ## Utility Commands
 
-`relay list` shows all protocol files:
-
-```bash
-~/.claude/skills/relay/scripts/relay list
-```
-
 `relay --help` and `relay --version` print usage and version info.
 
 If auto-detection fails, pass `--from claude --to codex` explicitly to `call`.

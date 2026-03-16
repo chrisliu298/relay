@@ -268,9 +268,6 @@ Codex 通过原生并行工具调用和子 agent 支持并发，但**不支持**
 ## 实用命令
 
 ```bash
-# 列出所有 relay 文件
-~/.claude/skills/relay/scripts/relay list
-
 # 显示用法和版本
 ~/.claude/skills/relay/scripts/relay --help
 ~/.claude/skills/relay/scripts/relay --version

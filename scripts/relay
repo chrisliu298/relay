@@ -5,11 +5,9 @@ set -euo pipefail
 #
 # Usage:
 #   relay call  --name <slug> [--effort <level>] [--body-only] [--] "<body>"
-#   relay list
 #   relay --help | --version
 #
 # call: generate req → invoke peer → print response content (body via arg or stdin)
-# list: show all relay files
 # IDs: YYYYMMDD-HHMMSS-PID-{name}.
 
 VERSION=5
@@ -246,29 +244,16 @@ cmd_call() {
   fi
 }
 
-cmd_list() {
-  [ $# -eq 0 ] || die "list: unexpected arguments"
-
-  if [ ! -d "$RELAY_DIR" ]; then
-    echo "relay: no .relay directory found" >&2
-    return 0
-  fi
-
-  find "$RELAY_DIR" \( -name '*.req.md' -o -name '*.res.md' -o -name '*.log' \) | sort
-}
-
 cmd_help() {
   cat <<'USAGE'
 relay — relay protocol v5: call a peer agent
 
 Usage:
   relay call  --name <slug> [--effort <level>] [--body-only] [--] "<body>"
-  relay list
   relay --help | --version
 
 Subcommands:
   call   Invoke peer agent, print response
-  list   List all relay files
 
 Call options:
   --name <slug>      Call identifier
@@ -291,6 +276,5 @@ subcmd="$1"; shift
 
 case "$subcmd" in
   call) cmd_call "$@" ;;
-  list) cmd_list "$@" ;;
-  *)    die "unknown subcommand: $subcmd (use 'call' or 'list')" ;;
+  *)    die "unknown subcommand: $subcmd (use 'call')" ;;
 esac
