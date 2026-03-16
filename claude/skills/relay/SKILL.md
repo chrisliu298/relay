@@ -21,12 +21,13 @@ task
 BODY
 ```
 
-The script auto-detects caller/peer from its install path. Use `scripts/relay` inside this skill directory.
+The script auto-detects caller/peer from its install path — it looks for `.claude/` or `.codex/` in the resolved path. **Always invoke via `~/.claude/skills/relay/scripts/relay`**. Using any other copy of the script breaks auto-detection and causes the call to fail or mis-route.
 
 **All Codex interactions go through `relay call`.** Do not invoke `codex exec` directly, do not spawn agents to run the codex CLI, and do not pass model flags (`-m`, `--model`). The model and invocation method are hardcoded in the script.
 
 ### Common Mistakes
 
+- **Wrong script path**: The script must be invoked from `~/.claude/skills/relay/scripts/relay`. Any other copy will break peer auto-detection.
 - **Empty heredoc body**: The `<<'BODY'` ... `BODY` block must contain text. An empty body causes an immediate error.
 - **Missing `--name`**: Every call requires `--name`. Omitting it is a script error, not a peer failure.
 
