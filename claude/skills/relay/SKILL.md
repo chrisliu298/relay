@@ -16,7 +16,7 @@ user-invocable: true
 Call Codex like a function. One command: generates the request, invokes Codex, prints the response.
 
 ```
-relay call --name <slug> [--effort <level>] [--bg] [--body-only] <<'BODY'
+relay call --name <slug> [--effort <level>] [--body-only] <<'BODY'
 task
 BODY
 ```
@@ -28,6 +28,7 @@ The script auto-detects caller/peer from its install path — it looks for `.cla
 ### Common Mistakes
 
 - **Wrong script path**: The script must be invoked from `~/.claude/skills/relay/scripts/relay`. Any other copy will break peer auto-detection.
+- **Premature failure diagnosis**: If a relay call was launched with `run_in_background: true`, do not inspect `.relay` files or enter the failure flow until the background task's completion notification arrives. No notification means the peer is still running.
 - **Empty heredoc body**: The `<<'BODY'` ... `BODY` block must contain text. An empty body causes an immediate error.
 - **Missing `--name`**: Every call requires `--name`. Omitting it is a script error, not a peer failure.
 
@@ -103,7 +104,9 @@ Request and response files are saved in `.relay/` (auto-gitignored). Peer stderr
 
 **You must diagnose and retry — do not report failure to the user without attempting a fix first.**
 
-When the script reports a missing response file, the peer failed before producing output. Each call generates a new request ID, so retrying does not re-execute previous attempts.
+**Background-task guard:** If the relay call was launched with `run_in_background: true`, this diagnosis flow applies only after the background task's completion notification has arrived. Until that notification, the relay call is still in progress — do not read logs, check for the response file, or conclude the peer has failed.
+
+When a completed relay call reports a missing response file, the peer failed before producing output. Each call generates a new request ID, so retrying does not re-execute previous attempts.
 
 1. **Read the log.** Use the Read tool on the `.log` sidecar path printed in the error output (`relay: peer log  → <path>`). The log contains the peer's stderr — the actual error message.
 2. **Diagnose.** Common causes and fixes:
@@ -119,18 +122,7 @@ The first failure is information, not a stop signal.
 
 When you have independent subagent work alongside a relay call, **never block on relay while subagents wait (or vice versa)**. Run everything concurrently:
 
-1. **Background the Bash call**: Use `run_in_background: true` on the Bash tool so the relay call runs concurrently with your subagents.
-2. **Or use `--bg`**: The script forks the peer invocation and returns the response path immediately for polling.
-
-```bash
-# --bg returns immediately with the response path
-RES=$(~/.claude/skills/relay/scripts/relay call --bg --name auth-review --effort medium <<'BODY'
-Review src/auth.py for security issues.
-BODY
-)
-# Poll for completion, then read with the Read tool
-# [ -f "$RES" ] && echo "ready"
-```
+**Background the Bash call**: Use `run_in_background: true` on the Bash tool so the relay call runs concurrently with your subagents. The platform sends a completion notification when the background task finishes — do not poll, do not inspect `.relay` files, and do not enter the failure diagnosis flow before that notification arrives.
 
 **Rule: Launch relay calls and subagents concurrently. Never serialize independent work.**
 
@@ -140,7 +132,7 @@ When Relay is used as the Parallax transport inside Prism, the relay call receiv
 
 Launch the relay Bash call with `run_in_background: true` in the same parallel dispatch step as the local reviewer subagents. Do not wrap Relay itself in another subagent layer.
 
-If the Parallax relay call fails, treat it as a recoverable transport problem. Read the `.log` sidecar, fix the invocation, and retry once before declaring Parallax unavailable.
+If the Parallax relay call fails (after its background completion notification has arrived), treat it as a recoverable transport problem. Read the `.log` sidecar, fix the invocation, and retry once before declaring Parallax unavailable.
 
 ## Utility Commands
 
