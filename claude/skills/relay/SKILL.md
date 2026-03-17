@@ -29,6 +29,7 @@ The script auto-detects caller/peer from its install path — it looks for `.cla
 
 - **Wrong script path**: The script must be invoked from `~/.claude/skills/relay/scripts/relay`. Any other copy will break peer auto-detection.
 - **Premature failure diagnosis**: If a relay call was launched with `run_in_background: true`, do not inspect `.relay` files or enter the failure flow until the background task's completion notification arrives. No notification means the peer is still running.
+- **Wrapping relay in a subagent**: Do not spawn an Agent that then calls `/relay` inside. When the subagent completes, the platform kills its child processes — including the still-running Codex CLI. Call `/relay` directly from the main conversation with `run_in_background: true` instead.
 - **Empty heredoc body**: The `<<'BODY'` ... `BODY` block must contain text. An empty body causes an immediate error.
 - **Missing `--name`**: Every call requires `--name`. Omitting it is a script error, not a peer failure.
 
@@ -125,6 +126,8 @@ When you have independent subagent work alongside a relay call, **never block on
 **Background the Bash call**: Use `run_in_background: true` on the Bash tool so the relay call runs concurrently with your subagents. The platform sends a completion notification when the background task finishes — do not poll, do not inspect `.relay` files, and do not enter the failure diagnosis flow before that notification arrives.
 
 **Rule: Launch relay calls and subagents concurrently. Never serialize independent work.**
+
+**Never wrap relay in a subagent.** If an Agent task calls `/relay` with `run_in_background: true`, the subagent will complete before Codex finishes, and the platform will kill the orphaned Codex process. Always call `/relay` from the main conversation. If a subagent must call relay (e.g., the skill was invoked before you could prevent it), the Bash call must run in foreground — omit `run_in_background` so the subagent blocks until Codex replies.
 
 ## Prism / Parallax
 
