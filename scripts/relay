@@ -132,6 +132,7 @@ $body
 
 ---
 Reply: $RELAY_DIR/$id.res.md
+IMPORTANT: Write your full response to this exact file path. Do not print the response to stdout — stdout may be discarded.
 Format:
   ---
   relay: $VERSION
