@@ -100,27 +100,40 @@ sequenceDiagram
     I->>I: 6. 输出响应内容
 ```
 
-`call` 子命令封装了完整的往返流程：生成请求文件、调用对端 agent、将响应内容输出到 stdout。脚本从安装路径自动检测调用方和对端。
+`call` 子命令封装了完整的往返流程：生成请求文件、调用对端 agent、将响应内容输出到 stdout。脚本从环境变量或安装路径自动检测调用方和对端。
 
 ---
 
 ## 安装
 
-克隆到 agent 的 skills 目录。Relay 为每个 agent 提供不同的 SKILL.md，因此需要通过符号链接安装对应的子目录。
+克隆仓库，将 agent 专用的 skill 目录和脚本分别通过符号链接安装。
+
+```bash
+git clone https://github.com/chrisliu298/relay.git ~/.cache/relay-src
+```
 
 **Claude Code：**
 
 ```bash
-git clone https://github.com/chrisliu298/relay.git ~/.cache/relay-src
 ln -s ~/.cache/relay-src/claude/skills/relay ~/.claude/skills/relay
 ```
 
 **Codex：**
 
 ```bash
-git clone https://github.com/chrisliu298/relay.git ~/.cache/relay-src
 ln -s ~/.cache/relay-src/codex/skills/relay ~/.codex/skills/relay
 ```
+
+**添加到 PATH**（推荐 — 可直接调用 `relay`）：
+
+```bash
+mkdir -p ~/.local/bin
+ln -s ~/.cache/relay-src/scripts/relay ~/.local/bin/relay
+```
+
+确保 `~/.local/bin` 在 PATH 中（大多数 Linux 发行版默认如此，macOS 可在 `.zshenv`/`.bashrc` 中添加）。
+
+通过 PATH 调用时，自动检测使用环境变量（Claude Code 设置 `CLAUDECODE=1`，Codex 设置 `CODEX_SANDBOX`），而非路径匹配。手动在 shell 中使用时，需显式传递 `--from`/`--to`。
 
 **重要：** 两个 skill 必须从同一份克隆安装并保持同一版本。请求/响应格式必须匹配；版本不一致会导致任一侧解析失败。
 
@@ -156,7 +169,7 @@ ln -s ~/.cache/relay-src/codex/skills/relay ~/.codex/skills/relay
 **Claude Code → Codex：**
 
 ```bash
-~/.claude/skills/relay/scripts/relay call --name auth-review --effort medium <<'BODY'
+relay call --name auth-review --effort medium <<'BODY'
 检查 src/auth.py 的安全问题。运行 pytest 验证。
 BODY
 ```
@@ -164,7 +177,7 @@ BODY
 **Codex → Claude Code：**
 
 ```bash
-~/.codex/skills/relay/scripts/relay call --name auth-review <<'BODY'
+relay call --name auth-review <<'BODY'
 检查 src/auth.py 的安全问题。运行 pytest 验证。
 BODY
 ```
@@ -245,7 +258,7 @@ Claude Code 支持 Bash 工具的 `run_in_background: true` 和脚本的 `--bg` 
 
 # 方式 2：--bg 标志（脚本原生）
 # 在后台 fork 对端调用，立即返回响应文件路径
-RES=$(~/.claude/skills/relay/scripts/relay call --bg --name auth-review --effort medium <<'BODY'
+RES=$(relay call --bg --name auth-review --effort medium <<'BODY'
 检查 src/auth.py 的安全问题。
 BODY
 )
@@ -269,8 +282,8 @@ Codex 通过原生并行工具调用和子 agent 支持并发，但**不支持**
 
 ```bash
 # 显示用法和版本
-~/.claude/skills/relay/scripts/relay --help
-~/.claude/skills/relay/scripts/relay --version
+relay --help
+relay --version
 ```
 
 ---

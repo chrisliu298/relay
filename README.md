@@ -100,27 +100,40 @@ sequenceDiagram
     I->>I: 6. Print response content
 ```
 
-The `call` subcommand wraps the full round-trip: generates the request file, invokes the peer agent, and prints the response content to stdout. The script auto-detects caller and peer from its install path.
+The `call` subcommand wraps the full round-trip: generates the request file, invokes the peer agent, and prints the response content to stdout. The script auto-detects caller and peer from environment variables or its install path.
 
 ---
 
 ## Installation
 
-Clone into your agent's skills directory. Relay has agent-specific SKILL.md files, so clone the appropriate subdirectory content.
+Clone the repo and symlink both the agent-specific skill directories and the script into PATH.
+
+```bash
+git clone https://github.com/chrisliu298/relay.git ~/.cache/relay-src
+```
 
 **Claude Code:**
 
 ```bash
-git clone https://github.com/chrisliu298/relay.git ~/.cache/relay-src
 ln -s ~/.cache/relay-src/claude/skills/relay ~/.claude/skills/relay
 ```
 
 **Codex:**
 
 ```bash
-git clone https://github.com/chrisliu298/relay.git ~/.cache/relay-src
 ln -s ~/.cache/relay-src/codex/skills/relay ~/.codex/skills/relay
 ```
+
+**Add to PATH** (recommended — makes `relay` callable directly):
+
+```bash
+mkdir -p ~/.local/bin
+ln -s ~/.cache/relay-src/scripts/relay ~/.local/bin/relay
+```
+
+Ensure `~/.local/bin` is in your PATH (it is by default on most Linux distros and can be added to `.zshenv`/`.bashrc` on macOS).
+
+When invoked from PATH, auto-detection uses environment variables (`CLAUDECODE=1` for Claude Code, `CODEX_SANDBOX` for Codex) instead of install-path matching. For manual shell use, pass `--from`/`--to` explicitly.
 
 **Important:** Install both agent skills from the same clone and keep them on the same version. Request/response formats must match; version skew can cause parse failures on either side.
 
@@ -156,7 +169,7 @@ One command does the full round-trip: generates the request, invokes the peer, p
 **Claude Code → Codex:**
 
 ```bash
-~/.claude/skills/relay/scripts/relay call --name auth-review --effort medium <<'BODY'
+relay call --name auth-review --effort medium <<'BODY'
 Review src/auth.py for security issues. Run pytest to verify.
 BODY
 ```
@@ -164,7 +177,7 @@ BODY
 **Codex → Claude Code:**
 
 ```bash
-~/.codex/skills/relay/scripts/relay call --name auth-review <<'BODY'
+relay call --name auth-review <<'BODY'
 Review src/auth.py for security issues. Run pytest to verify.
 BODY
 ```
@@ -245,7 +258,7 @@ Claude Code supports `run_in_background: true` on Bash tool calls and the `--bg`
 
 # Option 2: --bg flag (script-native)
 # Forks the peer invocation and returns the response path immediately
-RES=$(~/.claude/skills/relay/scripts/relay call --bg --name auth-review --effort medium <<'BODY'
+RES=$(relay call --bg --name auth-review --effort medium <<'BODY'
 Review src/auth.py for security issues.
 BODY
 )
@@ -269,8 +282,8 @@ Codex supports concurrency via native parallel tool calls and subagents, but **n
 
 ```bash
 # Show usage and version
-~/.claude/skills/relay/scripts/relay --help
-~/.claude/skills/relay/scripts/relay --version
+relay --help
+relay --version
 ```
 
 ---
