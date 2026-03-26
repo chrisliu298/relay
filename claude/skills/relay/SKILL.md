@@ -7,7 +7,7 @@ description: |
   use this skill's relay call command. Triggers on "ask codex", "have
   codex", "send to codex", "get codex to", "delegate to codex", "second
   opinion", "relay". Invoke with /relay.
-allowed-tools: Read, Write, Bash(~/.claude/skills/relay/scripts/relay:*), Bash(find:*), Bash(printf:*)
+allowed-tools: Read, Write, Bash(relay:*), Bash(find:*), Bash(printf:*)
 user-invocable: true
 ---
 
@@ -21,13 +21,11 @@ task
 BODY
 ```
 
-The script auto-detects caller/peer from its install path — it looks for `.claude/` or `.codex/` in the resolved path. **Always invoke via `~/.claude/skills/relay/scripts/relay`**. Using any other copy of the script breaks auto-detection and causes the call to fail or mis-route.
+The script is available as `relay` in PATH. It auto-detects caller/peer from environment variables (`CLAUDECODE=1` for Claude Code, `CODEX_SANDBOX` for Codex) or from its install path.
 
 **All Codex interactions go through `relay call`.** Do not invoke `codex exec` directly, do not spawn agents to run the codex CLI, and do not pass model flags (`-m`, `--model`). The model and invocation method are hardcoded in the script.
 
 ### Common Mistakes
-
-- **Wrong script path**: The script must be invoked from `~/.claude/skills/relay/scripts/relay`. Any other copy will break peer auto-detection.
 - **Premature failure diagnosis**: If a relay call was launched with `run_in_background: true`, do not inspect `.relay` files or enter the failure flow until the background task's completion notification arrives. No notification means the peer is still running.
 - **Wrapping relay in a subagent**: Do not spawn an Agent that then calls `/relay` inside. When the subagent completes, the platform kills its child processes — including the still-running Codex CLI. Call `/relay` directly from the main conversation with `run_in_background: true` instead.
 - **Empty heredoc body**: The `<<'BODY'` ... `BODY` block must contain text. An empty body causes an immediate error.
@@ -36,7 +34,7 @@ The script auto-detects caller/peer from its install path — it looks for `.cla
 ## Example
 
 ```bash
-~/.claude/skills/relay/scripts/relay call --name auth-review --effort medium <<'BODY'
+relay call --name auth-review --effort medium <<'BODY'
 Review src/auth.py for security issues. Run pytest to verify.
 BODY
 ```
@@ -57,7 +55,7 @@ Before raising effort, improve the prompt first — add output contracts, verifi
 
 ## Prompting Codex
 
-**Before composing the prompt body, read `~/.claude/skills/relay/references/prompting-codex.md`.** This is not optional — the guide contains model-specific patterns that materially affect output quality.
+**Before composing the prompt body, read `~/.claude/skills/relay/references/prompting-codex.md`.** (If not found, try `relay --help` to locate the install path.) This is not optional — the guide contains model-specific patterns that materially affect output quality.
 
 Use XML tags for structure. Key patterns:
 
@@ -68,7 +66,7 @@ Use XML tags for structure. Key patterns:
 **Example:**
 
 ```bash
-~/.claude/skills/relay/scripts/relay call --name pool-refactor --effort medium <<'BODY'
+relay call --name pool-refactor --effort medium <<'BODY'
 Refactor src/db/pool.py to add connection timeouts.
 
 1. Add timeout_seconds param to ConnectionPool.__init__
@@ -105,7 +103,7 @@ Request and response files are saved in `.relay/` (auto-gitignored). Peer stderr
 
 **You must diagnose and retry — do not report failure to the user without attempting a fix first.**
 
-**Background-task guard:** If the relay call was launched with `run_in_background: true`, this diagnosis flow applies only after the background task's completion notification has arrived. Until that notification, the relay call is still in progress — do not read logs, check for the response file, or conclude the peer has failed.
+**Background-task guard:** If the relay call was launched with `run_in_background: true`, this diagnosis flow applies only after the background task's completion notification has arrived. Relay calls take significantly longer than subagents — this is normal, not a failure. Until the completion notification arrives, the call is in progress and healthy. Do not read logs or check for the response file.
 
 When a completed relay call reports a missing response file, the peer failed before producing output. Each call generates a new request ID, so retrying does not re-execute previous attempts.
 
