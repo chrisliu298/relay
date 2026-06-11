@@ -45,46 +45,43 @@ Choose `--effort` based on the task:
 
 | Level | When to use |
 |-------|-------------|
-| `none` | No thinking needed: reformat, extract fields, find-and-replace |
-| `low` | Light thinking: triage, classify, apply a well-defined migration |
-| `medium` | **Default.** Code review, writing tests, fixing bugs |
-| `high` | Deeper reasoning: security audit, complex refactoring |
-| `xhigh` | Avoid unless necessary. Multi-file architectural redesign |
+| `none` | Latency-critical tasks that do not need reasoning or multi-step tool use |
+| `low` | Efficient reasoning for triage, classification, or simple migrations |
+| `medium` | **Default.** Balanced starting point for code review, tests, and bug fixes |
+| `high` | Complex agentic tasks, security review, or broad refactoring |
+| `xhigh` | Hard asynchronous architecture work or eval-bound tasks |
 
-Before raising effort, improve the prompt first — add output contracts, verification steps, completeness criteria.
+Evaluate `low` before `none` when planning, search, tool use, or multi-step decisions still matter. Before raising effort, improve the prompt first — add outcome-first success criteria, stop rules, verification steps, and completeness criteria.
 
 ## Prompting Codex
 
-**Before composing the prompt body, read the references in `~/.claude/skills/relay/references/`** — `gpt.md` for cross-cutting GPT-5.5 prompt patterns, `codex.md` for Codex coding agent patterns. (If not found, try `relay --help` to locate the install path.) This is not optional — the guides contain model-specific patterns that materially affect output quality.
+**Before composing the prompt body, read the prompt-engineer references** — `~/.claude/skills/prompt-engineer/references/gpt.md` for cross-cutting GPT-5.5 prompt patterns and `~/.claude/skills/prompt-engineer/references/codex.md` for Codex coding agent patterns. If those symlinks are unavailable, use the repo copies at `agents/extensions/skills/prompt-engineer/references/`. This is not optional — the guides contain model-specific patterns that materially affect output quality.
 
-Use XML tags for structure. Key patterns:
+Lead with the outcome, not the procedure. GPT-5.5 responds best to outcome-first prompts — state the goal, success criteria, and stop rules, then let Codex pick the path. Reach for XML scaffolding only when a specific failure mode needs it:
 
-- `<output_contract>` — exact format and structure expected
-- `<completeness_contract>` — what "done" means explicitly
-- `<verification_loop>` — check correctness before finalizing
+- `<output_contract>` — when format precision matters
+- `<completeness_contract>` — when the task has discrete items that must all be covered
+- `<verification_loop>` — when post-change validation is required
 
 **Example:**
 
 ```bash
 relay call --name pool-refactor --effort medium <<'BODY'
-Refactor src/db/pool.py to add connection timeouts.
+Add connection timeouts and stale-connection recovery to src/db/pool.py.
 
-1. Add timeout_seconds param to ConnectionPool.__init__
-2. Implement auto-reconnection for stale connections
-3. Add reclaim_stale() method
-4. Keep backward compatibility
+Success criteria:
+- ConnectionPool accepts a timeout_seconds parameter at construction
+- stale connections are auto-reconnected on use
+- a reclaim_stale() method exists for explicit cleanup
+- existing callers keep working without changes
+
+<verification_loop>
+Run pytest tests/test_pool.py — all tests must pass. No new lint errors.
+</verification_loop>
 
 <output_contract>
 Summary of changes, one per line, with file path and description.
 </output_contract>
-
-<verification_loop>
-Run pytest tests/test_pool.py — all tests must pass.
-</verification_loop>
-
-<completeness_contract>
-Done means: all 4 requirements implemented, tests pass, no new lint errors.
-</completeness_contract>
 BODY
 ```
 
